@@ -33,11 +33,7 @@ class User():
         this.body = CoreStat(1)
         this.mind = CoreStat(1)
         this.agility = CoreStat(1)
-
-        # Derived stats
-        this.life = DerivedStat(this.body, factor=25, offset=100)
-        this.mana = DerivedStat(this.mind, factor=5, offset=5)
-        this.speed = DerivedStat(this.agility, factor=2, offset=0)
+        this._derive_stats()
 
         return this
 
@@ -48,8 +44,16 @@ class User():
         with open(filename, 'r') as file:
             data = json.load(file)
 
-        print(f"{name} DATA: {data}")
         this = cls(name)
+        this.body = CoreStat(data["body"])
+        this.mind = CoreStat(data["mind"])
+        this.agility = CoreStat(data["agility"])
+        this._derive_stats()
+
+        this.armor = data["armor"]
+        this.accessory = data["accessory"]
+        this.items = data["items"]
+        this.skills = data["skills"]
 
         return this
 
@@ -70,6 +74,13 @@ class User():
         self.life.restore()
         self.mana.restore()
         self.speed.restore()
+
+    def _derive_stats(self):
+        """ Generates the derived stats from the core stats """
+        self.life = DerivedStat(self.body, factor=25, offset=100)
+        self.mana = DerivedStat(self.mind, factor=5, offset=5)
+        self.speed = DerivedStat(self.agility, factor=2, offset=0)
+
 
 class UserEncoder(json.JSONEncoder):
     """ A custom JSON encoder that understands our user objects """
@@ -111,7 +122,7 @@ def load(name):
     # If the user isn't on disk either, create them, then save
     user = User.create(name)
     CACHE[name] = user
-    user.save()
+    #user.save()
     return user
 
 def unload(name):

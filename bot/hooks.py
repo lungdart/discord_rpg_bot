@@ -1,6 +1,7 @@
 import os
 from discord.ext import commands as discord_commands
 import discord
+from bot import actions
 from bot.components.users import load as load_user
 
 ### GLOBAL VARIABLES ###
@@ -17,8 +18,10 @@ async def join(ctx, *args):
     pass
 
 @CLIENT.command()
-async def stats(ctx, *args):
-    pass
+async def stats(ctx):
+    print(type(ctx.author))
+    result = actions.get_stats(ctx.author.name)
+    await ctx.send(embed=result)
 
 @CLIENT.command()
 async def shop(ctx, *args):
