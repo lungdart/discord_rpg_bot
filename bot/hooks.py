@@ -13,10 +13,6 @@ async def battle(ctx, *args):
     pass
 
 @CLIENT.command()
-async def delete(ctx, *args):
-    pass
-
-@CLIENT.command()
 async def join(ctx, *args):
     pass
 
