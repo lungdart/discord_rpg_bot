@@ -19,13 +19,13 @@ async def join(ctx, *args):
 
 @CLIENT.command()
 async def stats(ctx):
-    print(type(ctx.author))
     result = actions.get_stats(ctx.author.name)
     await ctx.send(embed=result)
 
 @CLIENT.command()
 async def shop(ctx, *args):
-    pass
+    result = actions.view_shop()
+    await ctx.send(embed=result)
 
 @CLIENT.command()
 async def buy(ctx, *args):
