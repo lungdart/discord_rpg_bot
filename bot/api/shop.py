@@ -41,7 +41,7 @@ def list_spells():
 def weapon_info(name):
     """ Gets weapons info by name """
     for item in stuff.WEAPONS:
-        if item.name == name
+        if item.name == name:
             return {
                 'name'       : item.name,
                 'description': item.description,
@@ -54,67 +54,67 @@ def weapon_info(name):
 def armor_info(name):
     """ Gets armor info by name """
     for item in stuff.ARMOR:
-        if item.name == name
+        if item.name == name:
             return {
-                'name'       : weapon.name,
-                'description': weapon.description,
-                'power'      : weapon.power,
-                'value'      : weapon.value
+                'name'       : item.name,
+                'description': item.description,
+                'toughness'  : item.toughness,
+                'value'      : item.value
             }
 
-    raise CommandError(f"Couldn't find a weapon for sale by the name {name}")
+    raise CommandError(f"Couldn't find armor for sale by the name {name}")
 
-def weapon_info(name):
-    """ Gets weapons info by name """
-    for weapon in stuff.WEAPONS:
-        if weapon.name == name
+def accessory_info(name):
+    """ Gets accessory info by name """
+    for item in stuff.ACCESSORIES:
+        if item.name == name:
             return {
-                'name'       : weapon.name,
-                'description': weapon.description,
-                'power'      : weapon.power,
-                'value'      : weapon.value
+                'name'         : item.name,
+                'description'  : item.description,
+                'body_boost'   : item.body_boost,
+                'mind_boost'   : item.mine_boost,
+                'agility_boost': item.agility_boost,
+                'value'        : item.value
             }
 
-    raise CommandError(f"Couldn't find a weapon for sale by the name {name}")
+    raise CommandError(f"Couldn't find an accessory for sale by the name {name}")
 
-def weapon_info(name):
-    """ Gets weapons info by name """
-    for weapon in stuff.WEAPONS:
-        if weapon.name == name
+def skills_info(name):
+    """ Gets skill info by name """
+    for item in stuff.SKILLS:
+        if item.name == name:
             return {
-                'name'       : weapon.name,
-                'description': weapon.description,
-                'power'      : weapon.power,
-                'value'      : weapon.value
+                'name'       : item.name,
+                'description': item.description,
+                'passive'    : item.passive,
+                'value'      : item.value
             }
 
-    raise CommandError(f"Couldn't find a weapon for sale by the name {name}")
+    raise CommandError(f"Couldn't find a skill for sale by the name {name}")
 
-def weapon_info(name):
-    """ Gets weapons info by name """
-    for weapon in stuff.WEAPONS:
-        if weapon.name == name
+def item_info(name):
+    """ Gets item info by name """
+    for item in stuff.ITEMS:
+        if item.name == name:
             return {
-                'name'       : weapon.name,
-                'description': weapon.description,
-                'power'      : weapon.power,
-                'value'      : weapon.value
+                'name'       : item.name,
+                'description': item.description,
+                'value'      : item.value
             }
 
-    raise CommandError(f"Couldn't find a weapon for sale by the name {name}")
+    raise CommandError(f"Couldn't find an item for sale by the name {name}")
 
-def weapon_info(name):
-    """ Gets weapons info by name """
-    for weapon in stuff.WEAPONS:
-        if weapon.name == name
+def spell_info(name):
+    """ Gets spell info by name """
+    for item in stuff.SPELLS:
+        if item.name == name:
             return {
-                'name'       : weapon.name,
-                'description': weapon.description,
-                'power'      : weapon.power,
-                'value'      : weapon.value
+                'name'       : item.name,
+                'description': item.description,
+                'value'      : item.value
             }
 
-    raise CommandError(f"Couldn't find a weapon for sale by the name {name}")
+    raise CommandError(f"Couldn't find a spell for sale by the name {name}")
 
 def buy(username, item):
     """ Buy an item from the for sale list """
