@@ -102,6 +102,14 @@ class UserEncoder(json.JSONEncoder):
 
 
 ### USER FETCHING
+def create(name):
+    """ Creates a new user and saves to disk """
+    user = User.create(name)
+    CACHE[name] = user
+    user.save()
+
+    return user
+
 def load(name):
     """ Get's the named user instance """
     # Fetch user from cache first
@@ -111,18 +119,10 @@ def load(name):
     except KeyError:
         pass
 
-    # If their not in cache, load from disk
-    try:
-        user = User.load(name)
-        CACHE[name] = user
-        return user
-    except FileNotFoundError:
-        pass
-
-    # If the user isn't on disk either, create them, then save
-    user = User.create(name)
+    # If their not in cache, load from disk. (Will throw FileNotFound error if missing)
+    user = User.load(name)
     CACHE[name] = user
-    #user.save()
+
     return user
 
 def unload(name):

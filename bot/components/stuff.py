@@ -1,13 +1,13 @@
 import random
 
 
-### GLOBAS
+### GLOBALS
 WEAPONS = []
 ARMOR = []
 ACCESSORIES = []
 ITEMS = []
 SKILLS = []
-
+SPELLS = []
 
 ### CLASSES
 # Base class just in case
@@ -73,12 +73,24 @@ class Spell(Stuff):
 
 ### FUNCTIONS
 def load_weapons():
+    """ Loads weapons for sale form disk """
     pass
 
 def load_armor():
+    """ Loads armor for sale from disk """
     pass
 
 def load_accessories():
+    """ Loads accessories for sale from disk """
     pass
 
-def
+def load_spells():
+    """ Loads spells for sale from disk """
+    pass
+
+def load_all():
+    """ Loads all available items for sale from disk """
+    load_weapons()
+    load_armor()
+    load_accessories()
+    load_spells()
