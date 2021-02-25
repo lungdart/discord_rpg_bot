@@ -1,3 +1,4 @@
+""" Admin commands """
 def start_battle(username):
     """ Admin can start a battle """
     pass
