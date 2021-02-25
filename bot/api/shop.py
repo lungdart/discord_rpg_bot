@@ -1,4 +1,5 @@
-from bot.components import stuff
+""" Shopping commands """
+from bot.components import user, stuff
 from bot.api.errors import CommandError
 
 def list_all():
@@ -116,10 +117,55 @@ def spell_info(name):
 
     raise CommandError(f"Couldn't find a spell for sale by the name {name}")
 
-def buy(username, item):
+def buy(username, name, quantity=1):
     """ Buy an item from the for sale list """
-    pass
+    try:
+        target = user.load(username)
+    except FileNotFoundError:
+        raise CommandError(f"Username {target} does not exist!")
 
-def sell(username, item, quanitity):
+    # Find the item
+    if name in list_weapons():
+        found = stuff.WEAPONS
+    elif name in list_armor():
+        found = stuff.ARMOR
+    elif name in list_accessories():
+        found = stuff.ACCESSORIES
+    elif name in list_skills():
+        found = stuff.SKILLS
+    elif name in list_items():
+        found = stuff.ITEMS
+    elif name in list_spells():
+        found = stuff.SPELLS
+    else:
+        raise CommandError(f"Couldn't find anything for sale by the name {name}")
+    item = next((x for x in found if x.name == name))
+
+    # Insufficient funds
+    if target.gold <= (item.value * quantity):
+        raise CommandError(f"{username} does not have enough gold to purchase {quantity}x {item}")
+
+    # Perform the transaction
+    target.spend(item.value)
+    target.give(item, quantity)
+
+def sell(username, name, quantity=1):
     """ Sell x item's from a users inventory """
-    pass
+    try:
+        target = user.load(username)
+    except FileNotFoundError:
+        raise CommandError(f"Username {username} does not exist!")
+
+    # Ensure user has enough to sell
+    found = None
+    count = 0
+    for item in target.items:
+        if item.name == name:
+            found = item
+            count += 1
+    if not found or count < quantity:
+        raise CommandError(f"{username} doesn't have {quantity}x {name} to sell")
+
+    # Do the transaction
+    target.drop(name, quantity)
+    target.earn(item.value)
