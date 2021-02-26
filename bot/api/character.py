@@ -32,8 +32,7 @@ def stats(username):
         'skills'         : [x.name for x in target.skills],
         'spells'         : [x.name for x in target.spells],
         'items'          : [x.name for x in target.items],
-        'equipment'      : [x.name for x in target.equipment],
-        'weapons'        : [x.name for x in target.weapons],
+        'gear'           : [x.name for x in target.gear],
         'gold'           : target.gold
     }
 
@@ -51,7 +50,7 @@ def equip(username, item):
     except LookupError:
         raise CommandError(f"Could not find {item} in your inventory")
     except ValueError:
-        raise CommandError(f"Equiping {item} doesn't make much sense...")
+        raise CommandError(f"Equipping {item} doesn't make much sense...")
 
 def unequip(username, slot):
     """ Unequip anything in a slot """

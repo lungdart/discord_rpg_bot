@@ -29,17 +29,8 @@ class Battle():
             raise CommandError("There is already a battle started")
 
         self.state = "joinable"
-        self.users = {}
-
-        self.round = 0
         self.round_limit = round_limit
-        self.round_results = None
-        self.turn_usage = {}
-        self.turn_order = []
-        self.death_order = []
-
         self.join_timer = threading.Timer(Battle.join_time, Battle._join_timeout, args=self)
-        self.turn_timer = None
 
         output = self.logger(title="Battle", color="info")
         output.add(
@@ -98,7 +89,7 @@ class Battle():
             "Battle info",
             "When the battle begins, you will be asked to input your turn actions privately. Please be patient."
         )
-        output.send(pm=username)
+        output.pm(username)
 
     def begin(self):
         """ Begins a battle with 2 or more people joined """
@@ -242,7 +233,7 @@ class Battle():
             "Battle Command Success",
             f"Command successful. You have {turns_left} remaining for the round."
         )
-        output.send(pm=username)
+        output.pm(username)
 
     def _next_round(self):
         """ Initiates the next round """
