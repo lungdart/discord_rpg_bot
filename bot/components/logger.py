@@ -27,7 +27,7 @@ class LoggerFactory():
         async def pm(self, username):
             """ Send the embed to the user """
             members = self.channel.members
-            target = (x for x in members if members.name == pm)[0]
+            target = [x for x in members if x.name == username][0]
             await target.send(embed=self.embed)
 
     def __init__(self, channel):

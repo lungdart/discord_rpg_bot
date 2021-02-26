@@ -17,8 +17,8 @@ LOGGER_FACTORY = None
 async def battle(ctx, round_limit=None):
     """ Trigger to start a new battle """
     global BATTLE
-    BATTLE = battle.Battle(LOGGER_FACTORY)
-    battle.start(round_limit)
+    BATTLE = api.battle.Battle(LOGGER_FACTORY)
+    await BATTLE.start(round_limit)
 
 
 @CLIENT.command()
@@ -30,7 +30,7 @@ async def join(ctx):
         await logger.pm(ctx.author.name)
 
     try:
-        BATTLE.join(ctx.author.name)
+        await BATTLE.join(ctx.author.name)
     except api.errors.CommandError as error:
         logger = LOGGER_FACTORY(title="Error", color="error")
         logger.add("Bad Command", str(error))
@@ -42,7 +42,14 @@ async def stats(ctx, target=None):
     if not target:
         target = ctx.author.name
 
-    info = api.character.stats(target)
+    try:
+        info = api.character.stats(target)
+    except api.errors.CommandError as error:
+        logger = LOGGER_FACTORY(title="Error", color="error")
+        logger.add("error", str(error))
+        await logger.pm(ctx.author.name)
+        return
+
     level = f"""
     Level: {info['level']}
     Experience: {info['experience']}"""
@@ -62,12 +69,13 @@ async def stats(ctx, target=None):
     Armor: {info['armor']}
     Accessory: {info['accessory']}"""
 
-    skills = ', '.join(info['skills'])
-    spells = ', '.join(info['spells'])
-    all_items = ', '.join(info['items'] + info['gear'])
+    skills = ', '.join(info['skills']) if info['skills'] else 'Empty'
+    spells = ', '.join(info['spells']) if info['spells'] else 'Empty'
+    stuff = info['items'] + info['gear']
+    all_items = ', '.join(stuff) if stuff else 'Empty'
     gold = f"{info['gold']:,} Gold"
 
-    logger = LOGGER_FACTORY(title="{target} Stats")
+    logger = LOGGER_FACTORY(title=f"{target} Stats")
     logger.add("Level", level)
     logger.add("Derived Stats", derived)
     logger.add("Core Stats", core)
@@ -76,7 +84,7 @@ async def stats(ctx, target=None):
     logger.add("Spells", spells)
     logger.add("All Items", all_items)
     logger.add("Gold", gold)
-    logger.pm(ctx.author.name)
+    await logger.pm(ctx.author.name)
 
 @CLIENT.command()
 async def shop(ctx, *args):

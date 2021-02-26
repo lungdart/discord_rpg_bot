@@ -17,7 +17,7 @@ class Stuff():
         self.desc = desc
 
 # Weapons
-class Weapons(Stuff):
+class Weapon(Stuff):
     def __init__(self, name, desc, power, min_factor, max_factor):
         super(Weapons, self).__init__(name, desc)
         self.power = power

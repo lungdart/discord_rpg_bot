@@ -1,5 +1,5 @@
 """ Shopping commands """
-from bot.components import user, stuff
+from bot.components import users, stuff
 from bot.api.errors import CommandError
 
 def list_all():

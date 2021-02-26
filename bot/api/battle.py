@@ -23,7 +23,7 @@ class Battle():
         self.join_timer = None
         self.turn_timer = None
 
-    def start(self, round_limit=None):
+    async def start(self, round_limit=None):
         """ Starts a battle """
         if self._is_started():
             raise CommandError("There is already a battle started")
@@ -38,9 +38,9 @@ class Battle():
             f"""Type !join to enter this battle. Once everybody is ready, type !begin.
             After {Battle.join_time} seconds, the battle will automatically start"""
         )
-        output.send()
+        await output.send()
 
-    def stop(self, timeout=False):
+    async def stop(self, timeout=False):
         """ Stop a battle """
         if self._is_stopped():
             raise CommandError("There is no battle to stop")
@@ -63,9 +63,9 @@ class Battle():
                 "Battle stopped",
                 "The current battle was stopped prematurely by command"
             )
-        output.send()
+        await output.send()
 
-    def join(self, username):
+    async def join(self, username):
         """ Join a user to this battle """
         if not self._is_joinable():
             raise CommandError("There is no battle ready to join")
@@ -79,24 +79,28 @@ class Battle():
 
         output = self.logger(title="Battle", color="success")
         output.add(
-            f"{username} joins the battle"
+            f"{username} joins the battle",
             f"TODO: Username descriptions"
         )
-        output.send()
+        await output.send()
 
         output = self.logger(title="Battle", color="info")
         output.add(
             "Battle info",
             "When the battle begins, you will be asked to input your turn actions privately. Please be patient."
         )
-        output.pm(username)
+        await output.pm(username)
 
-    def begin(self):
+    async def begin(self):
         """ Begins a battle with 2 or more people joined """
         if not self._is_joinable():
             raise CommandError("There is no battle waiting for users to begin")
         if self.users < 2:
             raise CommandError("There aren't enough users to start the battle")
+
+        output = self.logger(title="Battle", color="info")
+        output.add("Battle has started", "Let the games begin!")
+        await output.send()
 
         # _next_round() will take care of all the output
         self.state = "active"
@@ -223,7 +227,7 @@ class Battle():
         if turn_count >= total_turns:
             raise CommandError(f"{username} doesn't have any turns left to spend")
 
-    def _use_turn(self, username):
+    async def _use_turn(self, username):
         """ Handles using up turns """
         self.turn_usage[username] += 1
         turns_left = self.turn_usage[username] - self.turn_order.count(username)
@@ -233,7 +237,7 @@ class Battle():
             "Battle Command Success",
             f"Command successful. You have {turns_left} remaining for the round."
         )
-        output.pm(username)
+        await output.pm(username)
 
     def _next_round(self):
         """ Initiates the next round """
@@ -245,8 +249,6 @@ class Battle():
         if self.turn_timer:
             self.turn_timer.cancel()
         self.turn_timer = threading.Timer(Battle.turn_time, Battle._turn_timeout, args=self)
-
-        output = self
 
     def _is_started(self):
         """ Checks if there's a battle started """

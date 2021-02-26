@@ -13,16 +13,22 @@ class User():
     """ User object """
     def __init__(self, name):
         self.name = name
+        self.level = 1
+        self.experience = 0
         self.body = None
         self.mind = None
         self.agility = None
         self.life = None
         self.mana = None
         self.speed = None
+        self.weapon = None
         self.armor = None
         self.accessory = None
         self.items = []
         self.skills = []
+        self.spells = []
+        self.gear = []
+        self.gold = 0
 
     @classmethod
     def create(cls, name):

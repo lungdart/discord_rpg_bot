@@ -1,14 +1,14 @@
 """ Passive character commands """
-from bot.components import user
+from bot.components import users
 from bot.api.errors import CommandError
 
 def stats(username):
     """ Get the stats for the target user """
     # User stats are not private information. Anyone can request it
     try:
-        target = user.load(username)
+        target = users.load(username)
     except FileNotFoundError:
-        raise CommandError(f"Username {target} does not exist!")
+        raise CommandError(f"Username {username} does not exist!")
 
     result = {
         'username'       : target.name,
@@ -26,9 +26,9 @@ def stats(username):
         'current_mind'   : target.mind.current,
         'base_agility'   : target.agility.base,
         'current_agility': target.agility.current,
-        'weapon'         : target.weapon.name,
-        'armor'          : target.armor.name,
-        'accessory'      : target.accessory.name,
+        'weapon'         : target.weapon.name if target.weapon else 'Empty',
+        'armor'          : target.armor.name if target.armor else 'Empty',
+        'accessory'      : target.accessory.name if target.accessory else 'Empty',
         'skills'         : [x.name for x in target.skills],
         'spells'         : [x.name for x in target.spells],
         'items'          : [x.name for x in target.items],
@@ -41,7 +41,7 @@ def stats(username):
 def equip(username, item):
     """ Equip an item """
     try:
-        target = user.load(username)
+        target = users.load(username)
     except FileNotFoundError:
         raise CommandError(f"Username {target} does not exist!")
 
@@ -55,7 +55,7 @@ def equip(username, item):
 def unequip(username, slot):
     """ Unequip anything in a slot """
     try:
-        target = user.load(username)
+        target = users.load(username)
     except FileNotFoundError:
         raise CommandError(f"Username {target} does not exist!")
 
