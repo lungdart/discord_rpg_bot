@@ -120,7 +120,7 @@ def spell_info(name):
 def buy(username, name, quantity=1):
     """ Buy an item from the for sale list """
     try:
-        target = user.load(username)
+        target = users.load(username)
     except FileNotFoundError:
         raise CommandError(f"Username {target} does not exist!")
 
@@ -152,7 +152,7 @@ def buy(username, name, quantity=1):
 def sell(username, name, quantity=1):
     """ Sell x item's from a users inventory """
     try:
-        target = user.load(username)
+        target = users.load(username)
     except FileNotFoundError:
         raise CommandError(f"Username {username} does not exist!")
 
