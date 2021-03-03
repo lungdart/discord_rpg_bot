@@ -2,6 +2,7 @@
 import os
 import json
 from bot.components.stats import CoreStat, DerivedStat
+from bot.components.stuff import Stuff
 
 
 ### GLOBALS
@@ -24,11 +25,9 @@ class User():
         self.weapon = None
         self.armor = None
         self.accessory = None
-        self.items = []
-        self.skills = []
         self.spells = []
-        self.gear = []
-        self.gold = 0
+        self.inventory = []
+        self._gold = 0
 
     @classmethod
     def create(cls, name):
@@ -81,6 +80,53 @@ class User():
         self.mana.restore()
         self.speed.restore()
 
+    @property
+    def gold(self):
+        return self._gold
+
+    def earn(self, amount):
+        """ Earn new monies """
+        self._gold += amount
+
+    def spend(self, amount):
+        """ Spend old monies """
+        if self._gold >= amount:
+            self._gold -= amount
+            return True
+
+        return False
+
+    def give(self, item, quantity=1):
+        """ Give this user a new item """
+        if not isinstance(item, Stuff):
+            return False
+
+        # Increment quantity if you already have it
+        for entry in self.inventory:
+            if entry['item'].name == item.name:
+                entry['quantity'] += quantity
+                return True
+
+        # Create a new entry with the quantity given
+        entry = {'item': item, 'quantity': quantity}
+        self.inventory.append(entry)
+        return True
+
+    def drop(self, name, quantity=1):
+        """ Drop items from your inventory forever """
+        found = None
+        for entry in self.inventory:
+            if entry['item'].name == name:
+                found = entry
+                break
+
+        if not found or found['quantity'] < quantity:
+            return False
+
+        entry['quantity'] -= quantity
+        if entry['quantity'] == 0:
+
+
     def _derive_stats(self):
         """ Generates the derived stats from the core stats """
         self.life = DerivedStat(self.body, factor=25, offset=100)
@@ -94,13 +140,17 @@ class UserEncoder(json.JSONEncoder):
         if isinstance(obj, User):
             return {
                 'name'      : obj.name,
+                'level'     : obj.level,
+                'experience': obj.experience,
                 'body'      : obj.body.base,
                 'mind'      : obj.mind.base,
                 'agility'   : obj.agility.base,
+                'weapon'    : obj.weapon,
                 'armor'     : obj.armor,
                 'accessory' : obj.accessory,
-                'items'     : obj.items,
-                'skills'    : obj.skills
+                'spells'    : obj.spells,
+                'inventory' : obj.inventory,
+                'gold'      : obj.gold
             }
 
         else:

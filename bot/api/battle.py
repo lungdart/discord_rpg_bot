@@ -147,23 +147,6 @@ class Battle():
 
         self._use_turn(source)
 
-    def use(self, source, target, skill):
-        """ Have one user use a skill on another """
-        self._validate_can_act(source)
-
-        if not target in self.users.keys():
-            raise CommandError(f"{target} is not in this battle")
-        if not self._is_turn_wait():
-            raise CommandError("Please wait for the current round to finish before inputting your next action")
-
-        # TODO: Everything
-
-        self.round_results.append({
-            "title": f"{source} uses the {skill} skill on {target}"
-        })
-
-        self._use_turn(source)
-
     def item(self, source, target, item):
         """ Have one user use an item on another """
         self._validate_can_act(source)

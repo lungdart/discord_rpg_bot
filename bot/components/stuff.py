@@ -8,7 +8,6 @@ WEAPONS = []
 ARMOR = []
 ACCESSORIES = []
 ITEMS = []
-SKILLS = []
 SPELLS = []
 
 ### CLASSES
@@ -113,14 +112,6 @@ class Accessory(Gear):
         kwargs['slot'] = "accessory"
         super(Accessory, self).__init__(**kwargs)
 
-# Skills
-class Skill(Stuff):
-    _prefix = "skill"
-
-    def __init__(self, **kwargs):
-        kwargs['category'] = "skill"
-        super(Skill, self).__init__(**kwargs)
-
 # Items
 class Item(Stuff):
     _prefix = "item"
@@ -144,12 +135,15 @@ def load_weapons():
     for entry in os.scandir(os.getenv('DATA_PATH')):
         if entry.is_file():
             # Only grab by weapon type
-            if entry.name.split("_")[0] == 'sword':
-                new_weapon = Sword.load(entry.name)
-            elif entry.name.split("_")[0] == 'axe':
-                new_weapon = Axe.load(entry.name)
-            elif entry.name.split("_")[0] == 'bow':
-                new_weapon = Bow.load(entry.name)
+            parts = entry.name.split("_")
+            category = parts[0]
+            name = os.path.splitext(parts[1])[0]
+            if category == 'sword':
+                new_weapon = Sword.load(name)
+            elif category == 'axe':
+                new_weapon = Axe.load(name)
+            elif category == 'bow':
+                new_weapon = Bow.load(name)
             else:
                 continue
 

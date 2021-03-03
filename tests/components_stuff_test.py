@@ -17,12 +17,11 @@ def environment():
 
     yield
 
-    stuff.WEAPONS = {}
-    stuff.ARMOR = {}
-    stuff.ACCESSORIES = {}
-    stuff.ITEMS = {}
-    stuff.SKILLS = {}
-    stuff.SPELLS = {}
+    stuff.WEAPONS = []
+    stuff.ARMOR = []
+    stuff.ACCESSORIES = []
+    stuff.ITEMS = []
+    stuff.SPELLS = []
     shutil.rmtree('/tmp/discord_bot')
 
 
@@ -38,6 +37,7 @@ def test_sword(environment): # pylint: disable=redefined-outer-name,unused-argum
     assert weapon.desc == desc
     assert weapon.power == power
     assert weapon.category == "gear"
+    assert weapon.slot == "weapon"
     assert weapon.type == "sword"
 
     weapon.save()
@@ -56,6 +56,7 @@ def test_axe(environment):# pylint: disable=redefined-outer-name,unused-argument
     assert weapon.desc == desc
     assert weapon.power == power
     assert weapon.category == "gear"
+    assert weapon.slot == "weapon"
     assert weapon.type == "axe"
 
     weapon.save()
@@ -74,6 +75,7 @@ def test_bow(environment): # pylint: disable=redefined-outer-name,unused-argumen
     assert weapon.desc == desc
     assert weapon.power == power
     assert weapon.category == "gear"
+    assert weapon.slot == "weapon"
     assert weapon.type == "bow"
 
     weapon.save()
@@ -98,7 +100,7 @@ def test_all_weapons(environment): # pylint: disable=redefined-outer-name,unused
         stuff.Bow(name='bow3', desc='Yet another Bow', power=9)
     ]
     for entry in weapons:
-        entry.save
+        entry.save()
 
     # Load them back in
     stuff.load_weapons()
@@ -109,29 +111,37 @@ def test_all_weapons(environment): # pylint: disable=redefined-outer-name,unused
     bows = 0
     for entry in stuff.WEAPONS:
         if entry.type == 'sword':
-            sword += 1
+            swords += 1
         elif entry.type == 'axe':
-            axe += 1
+            axes += 1
         elif entry.type == 'bow':
-            bow += 1
+            bows += 1
     assert swords == 3
     assert axes == 3
     assert bows == 3
 
 
-@pytest.mark.skip(reason="implementing")
+#@pytest.mark.skip(reason="implementing")
 def test_armor(environment): # pylint: disable=redefined-outer-name,unused-argument
     """ Create, save and load test armors """
-    pass
+    name = "armor1"
+    desc = "Some armor"
+    toughness = 10
+    armor = stuff.Armor(name=name, desc=desc, toughness=toughness)
+
+    assert armor.name == name
+    assert armor.desc == desc
+    assert armor.toughness == toughness
+    assert armor.category == "gear"
+    assert armor.slot == "armor"
+
+    armor.save()
+    armor2 = stuff.Armor.load(name)
+    assert armor.__dict__ == armor2.__dict__
 
 @pytest.mark.skip(reason="implementing")
 def test_accessory(environment): # pylint: disable=redefined-outer-name,unused-argument
     """ Create, save and load test accessories """
-    pass
-
-@pytest.mark.skip(reason="implementing")
-def test_skill(environment): # pylint: disable=redefined-outer-name,unused-argument
-    """ Create, save and load test skills """
     pass
 
 @pytest.mark.skip(reason="implementing")
