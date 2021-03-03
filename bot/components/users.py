@@ -2,7 +2,7 @@
 import os
 import json
 from bot.components.stats import CoreStat, DerivedStat
-from bot.components.stuff import Stuff
+from bot.components.stuff import Stuff, Gear
 
 
 ### GLOBALS
@@ -114,18 +114,73 @@ class User():
 
     def drop(self, name, quantity=1):
         """ Drop items from your inventory forever """
-        found = None
-        for entry in self.inventory:
-            if entry['item'].name == name:
-                found = entry
+        # Early out if user doesn't have the item to drop
+        idx = None
+        for i in range(len(self.inventory)):
+            if self.inventory[i]['item'].name == name:
+                idx = i
                 break
-
-        if not found or found['quantity'] < quantity:
+        if idx is None or self.inventory[idx]['quantity'] < quantity:
             return False
 
-        entry['quantity'] -= quantity
-        if entry['quantity'] == 0:
+        # Remove item completely if it's the last one dropped
+        if self.inventory[idx]['quantity'] == quantity:
+            del self.inventory[idx]
+        else:
+            self.inventory[idx]['quantity'] -= quantity
 
+        return True
+
+    def equip(self, item):
+        """ Equip the item """
+        if not isinstance(item, Gear):
+            return False
+
+        # Change the equipment slot to match
+        if item.slot == "weapon":
+            self.unequip("weapon")
+            self.weapon = item
+        elif item.slot == "armor":
+            self.unequip("armor")
+            self.armor = item
+        elif item.slot == "accessory":
+            self.unequip("accessory")
+            self.accessory = item
+        else:
+            return False
+
+        # Remove the equipped item from the inventory if it exists, it's still okay if it didn't
+        idx = None
+        for i in range(len(self.inventory)):
+            if self.inventory[i]['item'].name == item.name:
+                idx = i
+                break
+        if idx is None:
+            return True
+
+        self.inventory[idx]['quantity'] -= 1
+        if self.inventory[idx]['quantity'] < 1:
+            del self.inventory[idx]
+        return True
+
+    def unequip(self, slot_name):
+        """ Unequip whatever is in that slot and put it back in users inventory """
+        item = None
+        if slot_name == "weapon":
+            item = self.weapon
+            self.weapon = None
+        elif slot_name == "armor":
+            item = self.armor
+            self.armor = None
+        elif slot_name == "accessory":
+            item = self.accessory
+            self.accessory = None
+        else:
+            return False
+
+        if item:
+            self.give(item, 1)
+        return True
 
     def _derive_stats(self):
         """ Generates the derived stats from the core stats """

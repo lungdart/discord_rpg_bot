@@ -101,7 +101,7 @@ def buy(username, name, quantity=1):
     try:
         target = users.load(username)
     except FileNotFoundError:
-        raise CommandError(f"Username {target} does not exist!")
+        raise CommandError(f"Username {username} does not exist!")
 
     # Find the item
     if name in list_weapons():
@@ -131,15 +131,13 @@ def sell(username, name, quantity=1):
         raise CommandError(f"Username {username} does not exist!")
 
     # Ensure user has enough to sell
-    count = 0
+    value = 0
     for entry in target.inventory:
         if entry['item'].name == name:
-            count = entry['quantity']
+            value = entry['item'].value
             break
 
-    if count < quantity:
-        raise CommandError(f"{username} doesn't have {quantity}x {name} to sell")
-
     # Do the transaction
-    target.drop(name, quantity)
-    target.earn(item.value)
+    if not target.drop(name, quantity):
+        raise CommandError(f"{username} doesn't have {quantity} {name} to sell")
+    target.earn(value)

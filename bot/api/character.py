@@ -9,7 +9,6 @@ def stats(username):
         target = users.load(username)
     except FileNotFoundError:
         raise CommandError(f"Username {username} does not exist!")
-
     result = {
         'username'       : target.name,
         'level'          : target.level,
@@ -29,28 +28,31 @@ def stats(username):
         'weapon'         : target.weapon.name if target.weapon else 'Empty',
         'armor'          : target.armor.name if target.armor else 'Empty',
         'accessory'      : target.accessory.name if target.accessory else 'Empty',
-        'skills'         : [x.name for x in target.skills],
+        'power'          : target.weapon.power if target.weapon else 1,
+        'toughness'      : target.armor.toughness if target.armor else 1,
         'spells'         : [x.name for x in target.spells],
-        'items'          : [x.name for x in target.items],
-        'gear'           : [x.name for x in target.gear],
+        'inventory'      : [x['item'].name for x in target.inventory],
         'gold'           : target.gold
     }
 
     return result
 
-def equip(username, item):
-    """ Equip an item """
+def equip(username, name):
+    """ Equip an item by name"""
     try:
         target = users.load(username)
     except FileNotFoundError:
         raise CommandError(f"Username {target} does not exist!")
 
-    try:
-        target.equip(item)
-    except LookupError:
-        raise CommandError(f"Could not find {item} in your inventory")
-    except ValueError:
-        raise CommandError(f"Equipping {item} doesn't make much sense...")
+    item = None
+    for entry in target.inventory:
+        if entry['item'].name == name:
+            item = entry['item']
+    if item is None:
+        raise CommandError(f"Could not find {name} in {username}'s inventory")
+
+    if not target.equip(item):
+        raise CommandError(f"Could not equip {name}")
 
 def unequip(username, slot):
     """ Unequip anything in a slot """
@@ -59,7 +61,5 @@ def unequip(username, slot):
     except FileNotFoundError:
         raise CommandError(f"Username {target} does not exist!")
 
-    try:
-        target.unequip(slot)
-    except ValueError:
+    if not target.unequip(slot):
         raise CommandError(f"Invalid equipment slot: {slot}")

@@ -103,11 +103,38 @@ def test_info(environment): # pylint: disable=redefined-outer-name,unused-argume
 #@pytest.mark.skip(reason="implementing")
 def test_buy_sell(environment): # pylint: disable=redefined-outer-name,unused-argument
     """ Test buying and selling stuff """
+    # Buy 2 of the same item
     user = users.CACHE['user']
-    user.earn(stuff.WEAPONS[0].value)
+    test_gold = stuff.WEAPONS[0].value
+    user.earn(test_gold * 2)
+
+    shop.buy(user.name, stuff.WEAPONS[0].name)
+    assert user.gold == test_gold
+    assert len(user.inventory) == 1
+    assert user.inventory[0]['item'].name == stuff.WEAPONS[0].name
+    assert user.inventory[0]['quantity'] == 1
+
     shop.buy(user.name, stuff.WEAPONS[0].name)
     assert user.gold == 0
     assert len(user.inventory) == 1
     assert user.inventory[0]['item'].name == stuff.WEAPONS[0].name
+    assert user.inventory[0]['quantity'] == 2
 
-    shop.sell(user.name, 'test sword')
+    # Sell one at a time
+    shop.sell(user.name, stuff.WEAPONS[0].name)
+    assert user.gold == test_gold
+    assert len(user.inventory) == 1
+    assert user.inventory[0]['quantity'] == 1
+
+    shop.sell(user.name, stuff.WEAPONS[0].name)
+    assert user.gold == test_gold * 2
+    assert len(user.inventory) == 0
+
+    # Buy something you can't afford or something that doesn't exist
+    user._gold = 0
+    with pytest.raises(errors.CommandError):
+        shop.buy(user.name, stuff.WEAPONS[0].name)
+    with pytest.raises(errors.CommandError):
+        shop.buy("foobar", stuff.WEAPONS[0].name)
+    with pytest.raises(errors.CommandError):
+        shop.buy(user.name, "foobar")

@@ -4,21 +4,37 @@ class CoreStat():
     """ Core stats are what go up and down to modify the character """
     def __init__(self, base_value, current_value=None):
         self._base = base_value
-        self.current = current_value if current_value else self.base
+        self._current = current_value if current_value else self.base
 
     @property
     def base(self):
-        """ Prevents base from being modified accidentally """
+        """ Force use of setter/getter """
         return self._base
+
+    @base.setter
+    def base(self, value):
+        """ Sets the base and current stat at the same time without going below 1 """
+        self._base = value
+        if self._base < 1:
+            self._base = 1
+
+        self.restore()
+
+    @property
+    def current(self):
+        """ current getter """
+        return self._current
+
+    @current.setter
+    def current(self, value):
+        """ current setter """
+        self._current = value
+        if self._current < 0:
+            self._current = 0
 
     def restore(self):
         """ Restores the current value back to baseline """
         self.current = self._base
-
-    def modify(self, amount):
-        """ Modifies the base value by the given amount """
-        self._base += amount
-        self.restore()
 
     def __getstate__(self):
         """ Serialize core stat """
@@ -50,9 +66,16 @@ class DerivedStat():
             self._current = self.base
         return self._current
 
+    @current.setter
+    def current(self, value):
+        """ Sets the current value """
+        self._current = value
+        if self._current < 0:
+            self._current = 0
+
     def restore(self):
         """ Restores the current value back to the given amount """
-        self.current = self.base
+        self._current = self.base
 
     def __getstate__(self):
         """ Serialize derived stat """
