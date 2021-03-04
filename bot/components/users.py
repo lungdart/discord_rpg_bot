@@ -13,21 +13,29 @@ CACHE = {}
 class User():
     """ User object """
     def __init__(self, name):
+        # Meta data
         self.name = name
         self.level = 1
         self.experience = 0
+
+        # Stats
         self.body = None
         self.mind = None
         self.agility = None
         self.life = None
         self.mana = None
         self.speed = None
+
+        # Stuff
         self.weapon = None
         self.armor = None
         self.accessory = None
         self.spells = []
         self.inventory = []
         self._gold = 0
+
+        # Battle statuses
+        self.defending = False
 
     @classmethod
     def create(cls, name):
@@ -181,6 +189,10 @@ class User():
         if item:
             self.give(item, 1)
         return True
+
+    def is_alive(self):
+        """ Checks if this user is dead or alive """
+        return self.life.current > 0
 
     def _derive_stats(self):
         """ Generates the derived stats from the core stats """
