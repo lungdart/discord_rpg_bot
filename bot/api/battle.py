@@ -35,7 +35,7 @@ class Battle(StateMachine):
 
     def __init__(self, logger):
         super(Battle, self).__init__()
-        self.logger = logger
+        self.logger = logger()
         self.round = 0
         self.participants = {}
         self.actions = {}
@@ -76,7 +76,7 @@ class Battle(StateMachine):
             log.send()
             return
 
-        self.participants['name'] = user
+        self.participants[f'{user.name}'] = user
         log = self.logger.entry()
         log.title(f"{name} has entered the battle field!")
         log.desc("TODO: User descriptions")
@@ -102,14 +102,18 @@ class Battle(StateMachine):
         # Calculate the turn order and wait for actions
         self.round += 1
         self.turn_order = [k for k, v in sorted(self.participants.items(), key=lambda x: x[1].speed.current)]
+
+        # Wait for round actions
         self.wait_for_actions()
 
+    def on_enter_round_wait(self):
+        """ Inform the channel and each participant they are waiting for turn inputs """
         log = self.logger.entry()
         log.title(f"Begin Round {self.round}")
-        log.description("Everyone PM the bot with your actions you'd like to take for the round")
+        log.desc("Everyone PM the bot with your actions you'd like to take for the round")
         log.send()
 
-        for name, user in self.participants():
+        for name in self.participants:
             # Notify the user
             log = self.logger.entry()
             log.title(f"Waiting for round {self.round} action")
@@ -119,9 +123,6 @@ class Battle(StateMachine):
             # log.field(title="!cast", value="!cast <spell> <target>\nCast a spell you have learned on the target. For more information type !spells", inline=True)
             # log.field(title="!use", value="!use <item> <target>\nUse an item on a target. For more information type !items", inline=True)
             log.pm(name)
-
-            # Remove any lingering effects
-            user.defending = False
 
         # Queue up a big log for all turn actions
         self.action_log = self.logger.entry()
@@ -224,7 +225,7 @@ class Battle(StateMachine):
         if len(self.actions) == len(self.participants):
             self.run_round()
 
-    def on_run_round(self):
+    def on_enter_round_running(self):
         """ Triggers when all actions are submitted and the round is run """
         # Run the actions in turn order for the round
         for name in self.turn_order:
@@ -234,16 +235,25 @@ class Battle(StateMachine):
 
             action = self.actions[name]['action']
             args = self.actions[name]['args']
-            action(args)
+            action(*args)
 
         # Finally, send the entire round as a single log entry
         self.action_log.send()
         self.action_log = None
+        self.end_round()
+
+    def on_enter_round_ended(self):
+        """ Triggers when a round has ended """
+        # Remove any expired effects
+        for name in self.participants:
+            self.participants[name].defending = False
+
+        self.next_round()
 
     def _attack(self, source, target):
         """ Source attacks target """
         # Get the relative strength ratio of the two targets
-        physical_ratio = source.body / float(target.body)
+        physical_ratio = source.body.current / float(target.body.current)
         if target.defending:
             physical_ratio /= 2.0
 
@@ -257,12 +267,12 @@ class Battle(StateMachine):
         # Damage is relative to power and physical strength ratio
         # TODO: Misses, Saves, Crits
         damage = int(power * physical_ratio)
-        target.hurt(damage)
+        target.life.current -= damage
 
         # TODO: Custom weapon messages?
         self.action_log.field(
             title=f"{source.name} attacks {target.name}",
-            desc=f"{source.name} deals {damage} to {target.name} with {source.weapon.name}")
+            desc=f"{source.name} deals {damage} to {target.name} with {source.weapon.name if source.weapon else 'EMPTY'}")
 
         if not target.is_alive():
             self.death_order.append(target.name)

@@ -10,11 +10,11 @@ class NullLogger():
             pass
         def desc(self, value):
             pass
-        def field(self, title, desc):
+        def field(self, title, desc, inline=False):
             pass
         def send(self):
             pass
-        def pm(self):
+        def pm(self, name):
             pass
 
     def entry(self):
