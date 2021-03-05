@@ -35,7 +35,7 @@ class Battle(StateMachine):
 
     def __init__(self, logger):
         super(Battle, self).__init__()
-        self.logger = logger()
+        self.logger = logger
         self.round = 0
         self.participants = {}
         self.actions = {}
@@ -55,7 +55,7 @@ class Battle(StateMachine):
         log = self.logger.entry()
         log.title("Battle stopped")
         log.desc("The battle was stopped, any progress has been discarded.")
-        log.send()
+        log.buffer()
 
     def on_new(self):
         """ When a new battle is started """
@@ -63,9 +63,19 @@ class Battle(StateMachine):
         log.title("Battle Started!")
         log.desc("A new battle has started! Don't forget to join the battle if you'd like to participate")
         log.field(title="Commands", desc="!join\n!battle start\n!battle stop")
-        log.send()
+        log.buffer()
 
     def on_join(self, name):
+        """ Triggered when a user joins the battle """
+        # They shouldn't be able to join twice
+        if name in self.participants:
+            log = self.logger.entry()
+            log.color("warn")
+            log.title(f"You're already in the battle, {name}")
+            log.desc("Just be patient, it will begin soon")
+            log.buffer_pm(name)
+            return
+
         try:
             user = users.load(name)
         except FileNotFoundError:
@@ -73,14 +83,14 @@ class Battle(StateMachine):
             log.color("error")
             log.title("Join Error")
             log.desc(f"The character by the name {name} couldn't be loaded")
-            log.send()
+            log.buffer()
             return
 
         self.participants[f'{user.name}'] = user
         log = self.logger.entry()
         log.title(f"{name} has entered the battle field!")
         log.desc("TODO: User descriptions")
-        log.send()
+        log.buffer()
 
     def on_enter_started(self):
         """ The battle has begun it's first round """
@@ -92,7 +102,7 @@ class Battle(StateMachine):
             log.title("Battle Warning")
             log.desc(f"The battle can't be started until there are 2 or more participants. We currently have {count}.")
             log.field(title="Commands", desc="!join\n!battle stop")
-            log.send()
+            log.buffer()
             return
 
         self.new_round()
@@ -106,12 +116,12 @@ class Battle(StateMachine):
         # Wait for round actions
         self.wait_for_actions()
 
-    def on_enter_round_wait(self):
+    def on_wait_for_actions(self):
         """ Inform the channel and each participant they are waiting for turn inputs """
         log = self.logger.entry()
         log.title(f"Begin Round {self.round}")
         log.desc("Everyone PM the bot with your actions you'd like to take for the round")
-        log.send()
+        log.buffer()
 
         for name in self.participants:
             # Notify the user
@@ -122,7 +132,7 @@ class Battle(StateMachine):
             log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
             # log.field(title="!cast", value="!cast <spell> <target>\nCast a spell you have learned on the target. For more information type !spells", inline=True)
             # log.field(title="!use", value="!use <item> <target>\nUse an item on a target. For more information type !items", inline=True)
-            log.pm(name)
+            log.buffer_pm(name)
 
         # Queue up a big log for all turn actions
         self.action_log = self.logger.entry()
@@ -138,7 +148,7 @@ class Battle(StateMachine):
             log.color("error")
             log.title("File not found")
             log.desc(f"The character data for {name} was not found!")
-            log.send()
+            log.buffer()
             return
 
         # Ensure the source user can make an action
@@ -147,7 +157,7 @@ class Battle(StateMachine):
             log.color("warn")
             log.title("You're not in this battle")
             log.desc(f"Dont forget to join next time with the !join command")
-            log.pm(name)
+            log.buffer_pm(name)
             return
 
         if name in self.actions:
@@ -155,7 +165,7 @@ class Battle(StateMachine):
             log.color("warn")
             log.title("Wait for the next round")
             log.desc("You have already used your turn this round. Please wait for the next round before submitting a new action.")
-            log.pm(name)
+            log.buffer_pm(name)
             return
 
         if name in self.death_order:
@@ -163,7 +173,7 @@ class Battle(StateMachine):
             log.color("warn")
             log.title("You're dead!")
             log.desc("Pretty hard to submit a turn action from the grave! Better luck in the next battle.")
-            log.pm(name)
+            log.buffer_pm(name)
             return
 
         # Ensure the optional target user can be targeted
@@ -173,7 +183,7 @@ class Battle(StateMachine):
             log.title(f"{kwargs['target']} isn't a participant!")
             log.desc("Try targeting someone who's actually taking part!")
             log.field(title="!battle list", desc="List all battle participants")
-            log.pm(name)
+            log.buffer_pm(name)
             return
 
         if 'target' in kwargs and kwargs['target'] in self.death_order:
@@ -182,7 +192,7 @@ class Battle(StateMachine):
             log.title(f"{kwargs['target']} is dead!")
             log.desc("Don't beat a dead horse. Try picking a survivor instead...")
             log.field(title="!battle list", desc="List all battle participants")
-            log.pm(name)
+            log.buffer_pm(name)
             return
 
         # If the user is alive and a participant but can't be loaded we have a serious issue
@@ -195,7 +205,7 @@ class Battle(StateMachine):
             log.color("error")
             log.title("File not found")
             log.desc(f"The character data for {kwargs['target']} could not be found!")
-            log.send()
+            log.buffer()
             return
 
         if action == "attack":
@@ -219,7 +229,7 @@ class Battle(StateMachine):
             log.desc("I don't know how to do that. Try something that works")
             log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
             log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
-            log.pm(name)
+            log.buffer_pm(name)
 
         # Run the round actions once they are all submitted
         if len(self.actions) == len(self.participants):
@@ -238,7 +248,7 @@ class Battle(StateMachine):
             action(*args)
 
         # Finally, send the entire round as a single log entry
-        self.action_log.send()
+        self.action_log.buffer()
         self.action_log = None
         self.end_round()
 

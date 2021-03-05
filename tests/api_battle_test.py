@@ -24,7 +24,7 @@ def new_battle():
     winner.equip('test sword')
     winner.equip('test armor')
 
-    instance = battle.Battle(logger.NullLogger)
+    instance = battle.Battle(logger.NullLogger())
 
     yield instance
 
@@ -47,6 +47,10 @@ def test_start_join_stop(new_battle): # pylint: disable=redefined-outer-name,unu
     user2 = users.load('user2')
     new_battle.join('user1')
     new_battle.join('user2')
+    assert len(new_battle.participants) == 2
+
+    # Shouldn't be able to join twice
+    new_battle.join('user1')
     assert len(new_battle.participants) == 2
 
     new_battle.start()

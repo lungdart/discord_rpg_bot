@@ -2,39 +2,61 @@ import os
 from discord.ext import commands as discord_commands
 import discord
 from bot.components.users import load as load_user
-from bot.components.logger import LoggerFactory
+from bot.components.logger import DiscordLogger
 import bot.api as api
 
 ### GLOBAL VARIABLES ###
 CLIENT = discord_commands.Bot(command_prefix='!', intents=discord.Intents.all())
 CHANNEL = None
 BATTLE = None
-LOGGER_FACTORY = None
+LOGGER = None
 
 
 ### COMMAND HOOKS ###
 @CLIENT.command()
-async def battle(ctx, round_limit=None):
+async def battle(ctx, *args):
     """ Trigger to start a new battle """
-    global BATTLE
-    BATTLE = api.battle.Battle(LOGGER_FACTORY)
-    await BATTLE.start(round_limit)
+    # No arguments indicates starting a battle
+    if not args:
+        BATTLE.new()
+    elif args[0] == "start":
+        BATTLE.start()
+    elif args[0] == "stop":
+        BATTLE.stop()
+
+    # Bad command
+    else:
+        out = LOGGER.entry()
+        out.color("error")
+        out.title(f"Bad battle command {args[0]}")
+        out.desc("Did you mean to use one of the following valid commands instead")
+        out.field(
+            title="Commands",
+            desc="""
+                **!battle**: Begins a new battle
+                **!battle *start* **: Starts a battle if there are enough participants
+                **!battle *stop* **: Stops a battle at any point. All progress is lost
+            """)
+        out.buffer()
+
+    # Send everything from the buffer
+    await LOGGER.send_buffer()
 
 
 @CLIENT.command()
 async def join(ctx):
     """ User joins the battle """
-    if not BATTLE:
-        logger = LOGGER_FACTORY(title="Error", color="error")
-        logger.add("Bad Command", "There is no active battle to join")
-        await logger.pm(ctx.author.name)
+    if BATTLE.is_joinable:
+        BATTLE.join(ctx.author.name)
 
-    try:
-        await BATTLE.join(ctx.author.name)
-    except api.errors.CommandError as error:
-        logger = LOGGER_FACTORY(title="Error", color="error")
-        logger.add("Bad Command", str(error))
-        await logger.pm(ctx.author.name)
+    else:
+        log = LOGGER.entry()
+        log.color("warn")
+        log.title("There is no battle ready to join")
+        log.desc("Wait for a new battle to be ready for participants")
+        log.buffer_pm(ctx.author.name)
+
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
 async def stats(ctx, target=None):
@@ -45,9 +67,12 @@ async def stats(ctx, target=None):
     try:
         info = api.character.stats(target)
     except api.errors.CommandError as error:
-        logger = LOGGER_FACTORY(title="Error", color="error")
-        logger.add("error", str(error))
-        await logger.pm(ctx.author.name)
+        out = LOGGER.entry()
+        out.color('error')
+        out.title('Command Error')
+        out.desc(str(error))
+        out.buffer()
+        await LOGGER.send_buffer()
         return
 
     level = f"""
@@ -69,22 +94,24 @@ async def stats(ctx, target=None):
     Armor: {info['armor']}
     Accessory: {info['accessory']}"""
 
-    skills = ', '.join(info['skills']) if info['skills'] else 'Empty'
+    power_tough = f"{info['power']}/{info['toughness']}"
+
     spells = ', '.join(info['spells']) if info['spells'] else 'Empty'
-    stuff = info['items'] + info['gear']
-    all_items = ', '.join(stuff) if stuff else 'Empty'
+    inventory = info['inventory']
     gold = f"{info['gold']:,} Gold"
 
-    logger = LOGGER_FACTORY(title=f"{target} Stats")
-    logger.add("Level", level)
-    logger.add("Derived Stats", derived)
-    logger.add("Core Stats", core)
-    logger.add("Equipped", equipped)
-    logger.add("Skills", skills)
-    logger.add("Spells", spells)
-    logger.add("All Items", all_items)
-    logger.add("Gold", gold)
-    await logger.pm(ctx.author.name)
+    out = LOGGER.entry()
+    out.title(f"Stats for {target}")
+    out.field(title="Level", desc=level)
+    out.field(title="Derived Stats", desc=derived)
+    out.field(title="Core Stats", desc=core)
+    out.field(title="Equipped", desc=equipped)
+    out.field(title="Power/Toughness", desc=power_tough)
+    out.field(title="Spells", desc=spells)
+    out.field(title="Inventory", desc=inventory)
+    out.field(title="Gold", desc=gold)
+    out.buffer_pm(ctx.author.name)
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
 async def shop(ctx, *args):
@@ -103,8 +130,17 @@ async def equip(ctx, *args):
     pass
 
 @CLIENT.command()
-async def attack(ctx, *args):
-    pass
+async def attack(ctx, target):
+    if BATTLE.is_round_wait:
+        BATTLE.submit_action(ctx.author.name, 'attack', target=target)
+    else:
+        log = LOGGER.entry()
+        log.color("warn")
+        log.title("There is no battle round waiting for turn actions")
+        log.desc("Wait for the next round, or the next battle")
+        log.buffer_pm(ctx.author.name)
+
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
 async def defend(ctx, *args):
@@ -127,9 +163,10 @@ async def on_ready():
     # Fetch all members in the battle channel
     channel_id = int(os.getenv('DISCORD_CHANNEL'))
 
-    global CHANNEL, LOGGER_FACTORY
+    global CHANNEL, LOGGER, BATTLE
     CHANNEL = CLIENT.get_channel(channel_id)
-    LOGGER_FACTORY = LoggerFactory(CHANNEL)
+    LOGGER = DiscordLogger(CHANNEL)
+    BATTLE = api.battle.Battle(LOGGER)
 
     # Load in all users in the channel
     for member in CHANNEL.members:
