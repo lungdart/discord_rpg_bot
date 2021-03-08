@@ -58,15 +58,23 @@ class User():
             data = json.load(file)
 
         this = cls(name)
+        this.level = data["level"]
+        this.experience = data["experience"]
+
         this.body = CoreStat(data["body"])
         this.mind = CoreStat(data["mind"])
         this.agility = CoreStat(data["agility"])
         this._derive_stats()
 
+        this.weapon = data["weapon"]
         this.armor = data["armor"]
         this.accessory = data["accessory"]
-        this.items = data["items"]
-        this.skills = data["skills"]
+
+        this.inventory = data["inventory"]
+        # this.items = data["items"]
+        # this.spells = data["spells"]
+
+        this._gold = data["gold"]
 
         return this
 

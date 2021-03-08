@@ -24,7 +24,8 @@ class Stuff():
     @classmethod
     def load(cls, name):
         """ Load user from disk """
-        filename = os.path.join(os.getenv('DATA_PATH'), f'{cls._prefix}_{name}.json')
+        underscored_name = name.replace(' ', '_')
+        filename = os.path.join(os.getenv('DATA_PATH'), f'{cls._prefix}_{underscored_name}.json')
         with open(filename, 'r') as file:
             data = json.load(file)
 
@@ -33,7 +34,8 @@ class Stuff():
 
     def save(self):
         """ Saves this user to disk """
-        filename = os.path.join(os.getenv('DATA_PATH'), f'{self._prefix}_{self.name}.json')
+        underscored_name = self.name.replace(' ', '_')
+        filename = os.path.join(os.getenv('DATA_PATH'), f'{self._prefix}_{underscored_name}.json')
         data = json.dumps(self.__dict__)
 
         with open(filename, 'w') as file:
@@ -130,14 +132,18 @@ class Spell(Stuff):
 
 
 ### FUNCTIONS
+
 def load_weapons():
     """ Load all weapon files from disk into cache """
     for entry in os.scandir(os.getenv('DATA_PATH')):
         if entry.is_file():
-            # Only grab by weapon type
-            parts = entry.name.split("_")
+            # First word is the weapon type (category)
+            file_no_ext = os.path.splitext(entry.name)[0]
+            parts = file_no_ext.split("_")
             category = parts[0]
-            name = os.path.splitext(parts[1])[0]
+
+            # The rest is the true weapon name using spaces
+            name = ' '.join(parts[1:])
             if category == 'sword':
                 new_weapon = Sword.load(name)
             elif category == 'axe':

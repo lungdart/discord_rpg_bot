@@ -1,7 +1,10 @@
+""" Hooks the API into discord commands """
 import os
+import functools
 from discord.ext import commands as discord_commands
 import discord
-from bot.components.users import load as load_user
+from bot.components.users import load as load_user, create as create_user
+from bot.components.stuff import load_all as load_shop
 from bot.components.logger import DiscordLogger
 import bot.api as api
 
@@ -12,28 +15,64 @@ BATTLE = None
 LOGGER = None
 
 
+### Error handling decorators ###
+def log_errors(func):
+    """ Automatically logs errors correctly """
+    @functools.wraps(func)
+    async def wrapper(ctx, *args, **kwargs):
+        try:
+            return await func(ctx, *args, **kwargs)
+        except api.errors.CommandError as error:
+            out = LOGGER.entry()
+            out.color('error')
+            out.title('Command Error')
+            out.desc(str(error))
+            out.buffer_pm(ctx.author.name)
+            await LOGGER.send_buffer()
+            return
+        except Exception as error:
+            out = LOGGER.entry()
+            out.color('error')
+            out.title('Unhandled Exception')
+            out.desc(str(error))
+            out.buffer()
+            await LOGGER.send_buffer()
+            raise error
+    return wrapper
+
+
+
 ### COMMAND HOOKS ###
 @CLIENT.command()
-async def battle(ctx, *args):
+@log_errors
+async def battle(ctx, command):
     """ Trigger to start a new battle """
     # No arguments indicates starting a battle
-    if not args:
+    if not command:
         BATTLE.new()
-    elif args[0] == "start":
+    elif command == "start":
         BATTLE.start()
-    elif args[0] == "stop":
+    elif command == "stop":
         BATTLE.stop()
+    elif command == "list":
+        out = LOGGER.entry()
+        out.title("Battle list")
+        out.desc("Remember that the names are case sensitive when issuing battle actions!")
+        out.field(
+            title="Participants",
+            desc="\n".join(BATTLE.participants))
 
     # Bad command
     else:
         out = LOGGER.entry()
         out.color("error")
-        out.title(f"Bad battle command {args[0]}")
+        out.title(f"Bad battle command {command}")
         out.desc("Did you mean to use one of the following valid commands instead")
         out.field(
             title="Commands",
             desc="""
                 **!battle**: Begins a new battle
+                **!battle *list* **: Lists battle participants
                 **!battle *start* **: Starts a battle if there are enough participants
                 **!battle *stop* **: Stops a battle at any point. All progress is lost
             """)
@@ -44,11 +83,11 @@ async def battle(ctx, *args):
 
 
 @CLIENT.command()
+@log_errors
 async def join(ctx):
     """ User joins the battle """
     if BATTLE.is_joinable:
         BATTLE.join(ctx.author.name)
-
     else:
         log = LOGGER.entry()
         log.color("warn")
@@ -59,21 +98,13 @@ async def join(ctx):
     await LOGGER.send_buffer()
 
 @CLIENT.command()
+@log_errors
 async def stats(ctx, target=None):
     """ Get the stats for the context user or the target user """
     if not target:
         target = ctx.author.name
 
-    try:
-        info = api.character.stats(target)
-    except api.errors.CommandError as error:
-        out = LOGGER.entry()
-        out.color('error')
-        out.title('Command Error')
-        out.desc(str(error))
-        out.buffer()
-        await LOGGER.send_buffer()
-        return
+    info = api.character.stats(target)
 
     level = f"""
     Level: {info['level']}
@@ -97,7 +128,7 @@ async def stats(ctx, target=None):
     power_tough = f"{info['power']}/{info['toughness']}"
 
     spells = ', '.join(info['spells']) if info['spells'] else 'Empty'
-    inventory = info['inventory']
+    inventory = "\n".join(info['inventory']) if info['inventory'] else 'None'
     gold = f"{info['gold']:,} Gold"
 
     out = LOGGER.entry()
@@ -114,23 +145,101 @@ async def stats(ctx, target=None):
     await LOGGER.send_buffer()
 
 @CLIENT.command()
-async def shop(ctx, *args):
-    pass
+@log_errors
+async def shop(ctx):
+    """ View all items available in the shop """
+    stuff = api.shop.list_all()
+    weapons     = '\n'.join(stuff['weapons']) if stuff['weapons'] else 'None'
+    armor       = '\n'.join(stuff['armor']) if stuff['armor'] else 'None'
+    accessories = '\n'.join(stuff['accessories']) if stuff['accessories'] else 'None'
+    items       = '\n'.join(stuff['items']) if stuff['items'] else 'None'
+    spells      = '\n'.join(stuff['spells']) if stuff['spells'] else 'None'
+
+    out = LOGGER.entry()
+    out.title('Welcome to the shop!')
+    out.desc('Type *!info <ITEM>* to get more information about each item')
+    out.field('Weapons', f'{weapons}')
+    out.field('Armor', f'{armor}')
+    out.field('Accessories', f'{accessories}')
+    out.field('Items', f'{items}')
+    out.field('Spells', f'{spells}')
+    out.buffer_pm(ctx.author.name)
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
+@log_errors
+async def info(ctx, *name):
+    """ Get detailed information about an item """
+    # Convert all additional parameters as a single name with spaces
+    name = ' '.join(name)
+    details = api.shop.find_info(name)
+
+    # Parse the name and description as the embed title instead of a field
+    out = LOGGER.entry()
+    out.title(f"{details['name']}")
+    out.desc(f"{details['desc']}")
+
+    # Parse the rest of the attributes as fields
+    del details['name']
+    del details['desc']
+    for key in details:
+        out.field(title=f'{key}', desc=f'{details[key]}')
+    out.buffer_pm(ctx.author.name)
+
+    await LOGGER.send_buffer()
+
+
+@CLIENT.command()
+@log_errors
 async def buy(ctx, *args):
-    pass
+    """ Purchase an item by name from the shop """
+    # Try to get the quantity as the final argument
+    try:
+        quantity = int(args[-1])
+        args = args[:-1]
+    except ValueError:
+        quantity = 1
+
+    # Get the full name of the item to buy as the rest of the arguments
+    name = ' '.join(args)
+
+    api.shop.buy(ctx.author.name, name, quantity)
+
+    out = LOGGER.entry()
+    out.color('success')
+    out.title(f"{name} purchased!")
+    out.desc(f"You pruchased {name} and are much poorer")
+    out.buffer_pm(ctx.author.name)
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
-async def items(ctx, *args):
-    pass
+@log_errors
+async def sell(ctx, name, quantity=1):
+    """ Sell an item by name form your inventory """
 
 @CLIENT.command()
-async def equip(ctx, *args):
-    pass
+@log_errors
+async def equip(ctx, *name):
+    """ Equip a gear item into it's appropriate slot """
+    # Converts multi word names into a single argument
+    name = ' '.join(name)
+    api.character.equip(ctx.author.name, name)
+
+    out = LOGGER.entry()
+    out.color('success')
+    out.title(f"You equipped {name}")
+    out.buffer_pm(ctx.author.name)
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
+@log_errors
+async def unequip(ctx, slot):
+    """ Unequip the item in the slot """
+
+@CLIENT.command()
+@log_errors
 async def attack(ctx, target):
+    """ Have the author attack the target """
     if BATTLE.is_round_wait:
         BATTLE.submit_action(ctx.author.name, 'attack', target=target)
     else:
@@ -143,16 +252,29 @@ async def attack(ctx, target):
     await LOGGER.send_buffer()
 
 @CLIENT.command()
-async def defend(ctx, *args):
-    pass
+@log_errors
+async def defend(ctx):
+    """ Have the user defend for the turn """
+    if BATTLE.is_round_wait:
+        BATTLE.submit_action(ctx.author.name, 'defend')
+    else:
+        log = LOGGER.entry()
+        log.color("warn")
+        log.title("There is no battle round waiting for turn actions")
+        log.desc("Wait for the next round, or the next battle")
+        log.buffer_pm(ctx.author.name)
+
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
-async def magic(ctx, *args):
-    pass
+@log_errors
+async def magic(ctx, spell, target=None):
+    """ Have the author cast a spell on the target """
 
 @CLIENT.command()
-async def item(ctx, *args):
-    pass
+@log_errors
+async def item(ctx, spell, target=None):
+    """ Have the author use an item on a target """
 
 
 ### STARTING THE CLIENT ###
@@ -170,7 +292,13 @@ async def on_ready():
 
     # Load in all users in the channel
     for member in CHANNEL.members:
-        load_user(member.name)
+        try:
+            load_user(member.name)
+        except FileNotFoundError:
+            create_user(member.name)
+
+    # Load all shop items
+    load_shop()
 
 
 def start_client(token):

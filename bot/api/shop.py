@@ -34,6 +34,20 @@ def list_spells():
     """ List only spells for sale """
     return [x.name for x in stuff.SPELLS]
 
+def find_info(name):
+    """ Get the info for any item by name """
+    if name in list_weapons():
+        return weapon_info(name)
+    if name in list_armor():
+        return armor_info(name)
+    if name in list_accessories():
+        return accessory_info(name)
+    if name in list_items():
+        return item_info(name)
+    if name in list_spells():
+        return spell_info(name)
+    raise CommandError(f"Couldn't find anything by the name {name} for sale")
+
 def weapon_info(name):
     """ Gets weapons info by name """
     for item in stuff.WEAPONS:
@@ -103,6 +117,9 @@ def buy(username, name, quantity=1):
     except FileNotFoundError:
         raise CommandError(f"Username {username} does not exist!")
 
+    if quantity < 1:
+        raise CommandError(f"{quantity} is an invalid quantity to purchase!")
+
     # Find the item
     if name in list_weapons():
         found = stuff.WEAPONS
@@ -120,7 +137,7 @@ def buy(username, name, quantity=1):
 
     # Perform the transaction
     if not target.spend(item.value):
-        raise CommandError(f"{username} does not have enough gold to purchase {quantity}x {item}")
+        raise CommandError(f"{username} does not have enough gold to purchase {quantity}x {item.name}")
     target.give(item, quantity)
 
 def sell(username, name, quantity=1):
