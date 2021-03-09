@@ -136,7 +136,8 @@ def buy(username, name, quantity=1):
     item = next((x for x in found if x.name == name))
 
     # Perform the transaction
-    if not target.spend(item.value):
+    cost = item.value * quantity
+    if not target.spend(cost):
         raise CommandError(f"{username} does not have enough gold to purchase {quantity}x {item.name}")
     target.give(item, quantity)
 
@@ -151,7 +152,7 @@ def sell(username, name, quantity=1):
     value = 0
     for entry in target.inventory:
         if entry['item'].name == name:
-            value = entry['item'].value
+            value = entry['item'].value * quantity
             break
 
     # Do the transaction

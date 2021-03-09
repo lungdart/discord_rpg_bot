@@ -104,45 +104,58 @@ async def stats(ctx, target=None):
     if not target:
         target = ctx.author.name
 
-    info = api.character.stats(target)
+    cstats = api.character.stats(target)
 
     level = f"""
-    Level: {info['level']}
-    Experience: {info['experience']}"""
-
+    **Level**: {cstats['level']}
+    **Experience**: {cstats['experience']}"""
     derived = f"""
-    Life: {info['current_life']}/{info['base_life']}
-    Mana: {info['current_mana']}/{info['base_mana']}
-    Speed: {info['current_speed']}/{info['base_speed']}"""
-
+    **Life**: {cstats['current_life']}/{cstats['base_life']}
+    **Mana**: {cstats['current_mana']}/{cstats['base_mana']}
+    **Speed**: {cstats['current_speed']}/{cstats['base_speed']}"""
     core = f"""
-    Body: {info['current_body']}/{info['base_body']}
-    Mind: {info['current_mind']}/{info['base_mind']}
-    Agility: {info['current_agility']}/{info['base_agility']}"""
+    **Body**: {cstats['current_body']}/{cstats['base_body']}
+    **Mind**: {cstats['current_mind']}/{cstats['base_mind']}
+    **Agility**: {cstats['current_agility']}/{cstats['base_agility']}"""
 
-    equipped = f"""
-    Weapon: {info['weapon']}
-    Armor: {info['armor']}
-    Accessory: {info['accessory']}"""
-
-    power_tough = f"{info['power']}/{info['toughness']}"
-
-    spells = ', '.join(info['spells']) if info['spells'] else 'Empty'
-    inventory = "\n".join(info['inventory']) if info['inventory'] else 'None'
-    gold = f"{info['gold']:,} Gold"
+    power_tough = f"{cstats['power']}/{cstats['toughness']}"
 
     out = LOGGER.entry()
     out.title(f"Stats for {target}")
-    out.field(title="Level", desc=level)
-    out.field(title="Derived Stats", desc=derived)
-    out.field(title="Core Stats", desc=core)
-    out.field(title="Equipped", desc=equipped)
-    out.field(title="Power/Toughness", desc=power_tough)
-    out.field(title="Spells", desc=spells)
-    out.field(title="Inventory", desc=inventory)
-    out.field(title="Gold", desc=gold)
+    out.desc(level)
+    out.field("Derived Stats", derived)
+    out.field("Core Stats", core)
+    out.field("Power/Toughness", power_tough)
     out.buffer_pm(ctx.author.name)
     await LOGGER.send_buffer()
+
+@CLIENT.command()
+@log_errors
+async def inventory(ctx, target=None):
+    """ Gets the inventory """
+    # Grab the entire characters stats
+    if not target:
+        target = ctx.author.name
+    cstats = api.character.stats(target)
+
+    # Developped formatted output
+    equipped = f"""
+    **Weapon**: {cstats['weapon']}
+    **Armor**: {cstats['armor']}
+    **Accessory**: {cstats['accessory']}"""
+    spells = ', '.join(cstats['spells']) if cstats['spells'] else 'None'
+    stuff = "\n".join(cstats['inventory']) if cstats['inventory'] else 'None'
+    gold = f"{cstats['gold']:,} Gold"
+
+    # Output
+    out = LOGGER.entry()
+    out.desc(equipped)
+    out.field(title="Spells", desc=spells)
+    out.field(title="Gold", desc=gold)
+    out.field(title="Inventory", desc=stuff)
+    out.buffer_pm(ctx.author.name)
+    await LOGGER.send_buffer()
+
 
 @CLIENT.command()
 @log_errors
@@ -203,19 +216,39 @@ async def buy(ctx, *args):
     # Get the full name of the item to buy as the rest of the arguments
     name = ' '.join(args)
 
+    # Buy it/them
     api.shop.buy(ctx.author.name, name, quantity)
-
+    cstats = api.character.stats(ctx.author.name)
     out = LOGGER.entry()
     out.color('success')
-    out.title(f"{name} purchased!")
-    out.desc(f"You pruchased {name} and are much poorer")
+    out.title(f"{quantity}x {name} purchased!")
+    out.desc(f"You have {cstats['gold']} gold remaining...")
     out.buffer_pm(ctx.author.name)
     await LOGGER.send_buffer()
 
 @CLIENT.command()
 @log_errors
-async def sell(ctx, name, quantity=1):
+async def sell(ctx, *args):
     """ Sell an item by name form your inventory """
+    # Try to get the quantity as the final argument
+    try:
+        quantity = int(args[-1])
+        args = args[:-1]
+    except ValueError:
+        quantity = 1
+
+    # Get the full name of the item to buy as the rest of the arguments
+    name = ' '.join(args)
+
+    # Sell it/them
+    api.shop.sell(ctx.author.name, name, quantity)
+    cstats = api.character.stats(ctx.author.name)
+    out = LOGGER.entry()
+    out.color('success')
+    out.title(f"{quantity} {name} sold!")
+    out.desc(f"You now have {cstats['gold']} gold!")
+    out.buffer_pm(ctx.author.name)
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
 @log_errors
@@ -235,6 +268,13 @@ async def equip(ctx, *name):
 @log_errors
 async def unequip(ctx, slot):
     """ Unequip the item in the slot """
+    api.character.unequip(ctx.author.name, slot)
+
+    out = LOGGER.entry()
+    out.color('success')
+    out.title(f"Your {slot} is now empty")
+    out.buffer_pm(ctx.author.name)
+    await LOGGER.send_buffer()
 
 @CLIENT.command()
 @log_errors
@@ -266,15 +306,15 @@ async def defend(ctx):
 
     await LOGGER.send_buffer()
 
-@CLIENT.command()
-@log_errors
-async def magic(ctx, spell, target=None):
-    """ Have the author cast a spell on the target """
+# @CLIENT.command()
+# @log_errors
+# async def magic(ctx, spell, target=None):
+#     """ Have the author cast a spell on the target """
 
-@CLIENT.command()
-@log_errors
-async def item(ctx, spell, target=None):
-    """ Have the author use an item on a target """
+# @CLIENT.command()
+# @log_errors
+# async def item(ctx, spell, target=None):
+#     """ Have the author use an item on a target """
 
 
 ### STARTING THE CLIENT ###

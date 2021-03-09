@@ -31,7 +31,7 @@ def stats(username):
         'power'          : target.weapon.power if target.weapon else 1,
         'toughness'      : target.armor.toughness if target.armor else 1,
         'spells'         : [x.name for x in target.spells],
-        'inventory'      : [x['item'].name for x in target.inventory],
+        'inventory'      : [f"{x['item'].name} x{x['quantity']}" for x in target.inventory],
         'gold'           : target.gold
     }
 
