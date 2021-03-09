@@ -6,7 +6,7 @@ def stats(username):
     """ Get the stats for the target user """
     # User stats are not private information. Anyone can request it
     try:
-        target = users.load(username)
+        target = users.load(username.lower())
     except FileNotFoundError:
         raise CommandError(f"Username {username} does not exist!")
     result = {
@@ -40,7 +40,7 @@ def stats(username):
 def equip(username, name):
     """ Equip an item by name"""
     try:
-        target = users.load(username)
+        target = users.load(username.lower())
     except FileNotFoundError:
         raise CommandError(f"Username {target} does not exist!")
 
@@ -54,12 +54,18 @@ def equip(username, name):
     if not target.equip(item):
         raise CommandError(f"Could not equip {name}")
 
+    # Save the target when finished
+    target.save()
+
 def unequip(username, slot):
     """ Unequip anything in a slot """
     try:
-        target = users.load(username)
+        target = users.load(username.lower())
     except FileNotFoundError:
         raise CommandError(f"Username {target} does not exist!")
 
     if not target.unequip(slot):
         raise CommandError(f"Invalid equipment slot: {slot}")
+
+    # Save the target when finished
+    target.save()

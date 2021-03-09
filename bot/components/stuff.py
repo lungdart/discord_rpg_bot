@@ -41,6 +41,10 @@ class Stuff():
         with open(filename, 'w') as file:
             file.write(data)
 
+    def __eq__(self, other):
+        """ Test equality by attribute dict """
+        return self.__dict__ == other.__dict__
+
 
 # EQUIPMENT
 class Gear(Stuff):
@@ -132,6 +136,25 @@ class Spell(Stuff):
 
 
 ### FUNCTIONS
+def factory(**kwargs):
+    """ Creates the appropriate instance from the saved dictionary """
+    if kwargs['category'] == "gear" and kwargs["slot"] == "weapon":
+        if kwargs['type'] == "sword":
+            return Sword(**kwargs)
+        if kwargs['type'] == "axe":
+            return Axe(**kwargs)
+        if kwargs['type'] == "bow":
+            return Bow(**kwargs)
+    if kwargs['category'] == "gear" and kwargs["slot"] == "armor":
+        return Armor(**kwargs)
+    if kwargs['category'] == "gear" and kwargs["slot"] == "accessory":
+        return Accessory(**kwargs)
+    if kwargs['category'] == "spell":
+        return Spell(**kwargs)
+    if kwargs['category'] == "item":
+        return Item(**kwargs)
+
+    raise KeyError("Bad category key")
 
 def load_weapons():
     """ Load all weapon files from disk into cache """

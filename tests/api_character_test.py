@@ -74,10 +74,6 @@ def test_equip(environment): # pylint: disable=redefined-outer-name,unused-argum
     # Ensure user can't equip jibberish
     with pytest.raises(errors.CommandError):
         character.equip('user', 'foobar')
-    with pytest.raises(errors.CommandError):
-        character.equip('user', 'foobar')
-    with pytest.raises(errors.CommandError):
-        character.equip('user', 'foobar')
 
     # Actually equip the gear and ensure it modifies the character correctly, and comes out of inventory
     character.equip('user', stuff.WEAPONS[0].name)
@@ -103,10 +99,6 @@ def test_unequip(environment): # pylint: disable=redefined-outer-name,unused-arg
     character.equip('user', stuff.ACCESSORIES[0].name)
 
     # Ensure you can't just unequip jibberish
-    with pytest.raises(errors.CommandError):
-        character.unequip('user', 'foobar')
-    with pytest.raises(errors.CommandError):
-        character.unequip('user', 'foobar')
     with pytest.raises(errors.CommandError):
         character.unequip('user', 'foobar')
 

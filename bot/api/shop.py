@@ -113,7 +113,7 @@ def spell_info(name):
 def buy(username, name, quantity=1):
     """ Buy an item from the for sale list """
     try:
-        target = users.load(username)
+        target = users.load(username.lower())
     except FileNotFoundError:
         raise CommandError(f"Username {username} does not exist!")
 
@@ -141,10 +141,13 @@ def buy(username, name, quantity=1):
         raise CommandError(f"{username} does not have enough gold to purchase {quantity}x {item.name}")
     target.give(item, quantity)
 
+    # Save the target when finished
+    target.save()
+
 def sell(username, name, quantity=1):
     """ Sell x item's from a users inventory """
     try:
-        target = users.load(username)
+        target = users.load(username.lower())
     except FileNotFoundError:
         raise CommandError(f"Username {username} does not exist!")
 
@@ -159,3 +162,6 @@ def sell(username, name, quantity=1):
     if not target.drop(name, quantity):
         raise CommandError(f"{username} doesn't have {quantity} {name} to sell")
     target.earn(value)
+
+    # Save the target when finished
+    target.save()

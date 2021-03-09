@@ -2,7 +2,7 @@
 import os
 import json
 from bot.components.stats import CoreStat, DerivedStat
-from bot.components.stuff import Stuff, Gear
+import bot.components.stuff as stuff
 
 
 ### GLOBALS
@@ -53,8 +53,10 @@ class User():
     @classmethod
     def load(cls, name):
         """ Load user from disk """
-        filename = os.path.join(os.getenv('DATA_PATH'), f'user_{name}.json')
-        with open(filename, 'r') as file:
+        formatted_name = name.lower().replace(' ', '_')
+        filename = f'user_{formatted_name}.json'
+        full_path = os.path.join(os.getenv('DATA_PATH'), filename)
+        with open(full_path, 'r') as file:
             data = json.load(file)
 
         this = cls(name)
@@ -66,13 +68,14 @@ class User():
         this.agility = CoreStat(data["agility"])
         this._derive_stats()
 
-        this.weapon = data["weapon"]
-        this.armor = data["armor"]
-        this.accessory = data["accessory"]
+        this.weapon = stuff.factory(**data["weapon"])
+        this.armor = stuff.factory(**data["armor"])
+        this.accessory = stuff.factory(**data["accessory"])
 
-        this.inventory = data["inventory"]
-        # this.items = data["items"]
-        # this.spells = data["spells"]
+        for kwargs in data["inventory"]:
+            this.inventory.append(stuff.factory(**kwargs))
+        for kwargs in data["spells"]:
+            this.spells.append(stuff.factory(**kwargs))
 
         this._gold = data["gold"]
 
@@ -80,10 +83,13 @@ class User():
 
     def save(self):
         """ Saves this user to disk """
-        filename = os.path.join(os.getenv('DATA_PATH'), f'user_{self.name}.json')
-        data = UserEncoder().encode(self)
+        # Store everything in lower case, with underscores instead of spaces
+        formatted_name = self.name.lower().replace(' ', '_')
+        filename = f'user_{formatted_name}.json'
+        full_path = os.path.join(os.getenv('DATA_PATH'), filename)
 
-        with open(filename, 'w') as file:
+        data = UserEncoder().encode(self)
+        with open(full_path, 'w') as file:
             file.write(data)
 
     def restore(self):
@@ -103,6 +109,7 @@ class User():
     def earn(self, amount):
         """ Earn new monies """
         self._gold += amount
+        self.save()
 
     def spend(self, amount):
         """ Spend old monies """
@@ -114,7 +121,7 @@ class User():
 
     def give(self, item, quantity=1):
         """ Give this user a new item """
-        if not isinstance(item, Stuff):
+        if not isinstance(item, stuff.Stuff):
             return False
 
         # Increment quantity if you already have it
@@ -149,7 +156,7 @@ class User():
 
     def equip(self, item):
         """ Equip the item """
-        if not isinstance(item, Gear):
+        if not isinstance(item, stuff.Gear):
             return False
 
         # Change the equipment slot to match
@@ -213,6 +220,13 @@ class UserEncoder(json.JSONEncoder):
     """ A custom JSON encoder that understands our user objects """
     def default(self, obj):
         if isinstance(obj, User):
+            # Convert the inventory item objects to kwarg values for later construction
+            inventory = []
+            for entry in obj.inventory:
+                new_entry = entry.copy()
+                new_entry['item'] = entry['item'].__dict__
+                inventory.append(new_entry)
+
             return {
                 'name'      : obj.name,
                 'level'     : obj.level,
@@ -220,11 +234,11 @@ class UserEncoder(json.JSONEncoder):
                 'body'      : obj.body.base,
                 'mind'      : obj.mind.base,
                 'agility'   : obj.agility.base,
-                'weapon'    : obj.weapon,
-                'armor'     : obj.armor,
-                'accessory' : obj.accessory,
-                'spells'    : obj.spells,
-                'inventory' : obj.inventory,
+                'weapon'    : obj.weapon.__dict__ if obj.weapon else None,
+                'armor'     : obj.armor.__dict__ if obj.armor else None,
+                'accessory' : obj.accessory.__dict__ if obj.accessory else None,
+                'spells'    : [x.__dict__ for x in obj.spells],
+                'inventory' : inventory,
                 'gold'      : obj.gold
             }
 

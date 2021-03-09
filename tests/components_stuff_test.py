@@ -26,6 +26,38 @@ def environment():
 
 
 #@pytest.mark.skip(reason="implementing")
+def test_factory(): # pylint: disable=redefined-outer-name,unused-argument
+    """ Test creating items from the factory method """
+    sword1 = stuff.Sword(name="test", desc="test2", power=42)
+    sword2 = stuff.factory(**sword1.__dict__)
+    assert sword1 == sword2
+
+    axe1 = stuff.Axe(name="test", desc="test2", power=42)
+    axe2 = stuff.factory(**axe1.__dict__)
+    assert axe1 == axe2
+
+    bow1 = stuff.Bow(name="test", desc="test2", power=42)
+    bow2 = stuff.factory(**bow1.__dict__)
+    assert bow1 == bow2
+
+    armor1 = stuff.Armor(name="test", desc="test2", toughness=42)
+    armor2 = stuff.factory(**armor1.__dict__)
+    assert armor1 == armor2
+
+    accessory1 = stuff.Accessory(name="test", desc="test2")
+    accessory2 = stuff.factory(**accessory1.__dict__)
+    assert accessory1 == accessory2
+
+    spell1 = stuff.Spell(name="test", desc="test2")
+    spell2 = stuff.factory(**spell1.__dict__)
+    assert spell1 == spell2
+
+    item1 = stuff.Item(name="test", desc="test2")
+    item2 = stuff.factory(**item1.__dict__)
+    assert item1 == item2
+
+
+#@pytest.mark.skip(reason="implementing")
 def test_sword(environment): # pylint: disable=redefined-outer-name,unused-argument
     """ Create, save and load test swords """
     name = "sword1"

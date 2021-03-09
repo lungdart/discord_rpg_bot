@@ -46,7 +46,7 @@ def log_errors(func):
 @CLIENT.command()
 @log_errors
 async def battle(ctx, command):
-    """ Trigger to start a new battle """
+    """ Manage a battle instance """
     # No arguments indicates starting a battle
     if not command:
         BATTLE.new()
@@ -85,7 +85,7 @@ async def battle(ctx, command):
 @CLIENT.command()
 @log_errors
 async def join(ctx):
-    """ User joins the battle """
+    """ Join an active battle that's waiting for participants """
     if BATTLE.is_joinable:
         BATTLE.join(ctx.author.name)
     else:
@@ -100,7 +100,7 @@ async def join(ctx):
 @CLIENT.command()
 @log_errors
 async def stats(ctx, target=None):
-    """ Get the stats for the context user or the target user """
+    """ Get your stats or the stats for someone else """
     if not target:
         target = ctx.author.name
 
@@ -132,7 +132,7 @@ async def stats(ctx, target=None):
 @CLIENT.command()
 @log_errors
 async def inventory(ctx, target=None):
-    """ Gets the inventory """
+    """ Get your inventory, or the inventory of someone else """
     # Grab the entire characters stats
     if not target:
         target = ctx.author.name
@@ -205,7 +205,7 @@ async def info(ctx, *name):
 @CLIENT.command()
 @log_errors
 async def buy(ctx, *args):
-    """ Purchase an item by name from the shop """
+    """ Purchase one or more item(s) from the shop """
     # Try to get the quantity as the final argument
     try:
         quantity = int(args[-1])
@@ -229,7 +229,7 @@ async def buy(ctx, *args):
 @CLIENT.command()
 @log_errors
 async def sell(ctx, *args):
-    """ Sell an item by name form your inventory """
+    """ Sell one or more item(s) from your inventory """
     # Try to get the quantity as the final argument
     try:
         quantity = int(args[-1])
@@ -253,7 +253,7 @@ async def sell(ctx, *args):
 @CLIENT.command()
 @log_errors
 async def equip(ctx, *name):
-    """ Equip a gear item into it's appropriate slot """
+    """ Equip an appropriate item into it's designated slot """
     # Converts multi word names into a single argument
     name = ' '.join(name)
     api.character.equip(ctx.author.name, name)
@@ -267,7 +267,7 @@ async def equip(ctx, *name):
 @CLIENT.command()
 @log_errors
 async def unequip(ctx, slot):
-    """ Unequip the item in the slot """
+    """ Unequip an item from the given inventory slot """
     api.character.unequip(ctx.author.name, slot)
 
     out = LOGGER.entry()
@@ -279,7 +279,7 @@ async def unequip(ctx, slot):
 @CLIENT.command()
 @log_errors
 async def attack(ctx, target):
-    """ Have the author attack the target """
+    """ Attack a target while in battle """
     if BATTLE.is_round_wait:
         BATTLE.submit_action(ctx.author.name, 'attack', target=target)
     else:
@@ -294,7 +294,7 @@ async def attack(ctx, target):
 @CLIENT.command()
 @log_errors
 async def defend(ctx):
-    """ Have the user defend for the turn """
+    """ Defend for the round while in battle """
     if BATTLE.is_round_wait:
         BATTLE.submit_action(ctx.author.name, 'defend')
     else:
@@ -333,7 +333,7 @@ async def on_ready():
     # Load in all users in the channel
     for member in CHANNEL.members:
         try:
-            load_user(member.name)
+            load_user(member.name.lower())
         except FileNotFoundError:
             create_user(member.name)
 

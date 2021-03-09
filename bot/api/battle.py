@@ -77,7 +77,7 @@ class Battle(StateMachine):
             return
 
         try:
-            user = users.load(name)
+            user = users.load(name.lower())
         except FileNotFoundError:
             log = self.logger.entry()
             log.color("error")
@@ -142,7 +142,7 @@ class Battle(StateMachine):
         """ Somebody submitted an action """
         # Get the source user (Action submitter)
         try:
-            source_user = users.load(name)
+            source_user = users.load(name.lower())
         except FileNotFoundError:
             log = self.logger.entry()
             log.color("error")
@@ -197,7 +197,7 @@ class Battle(StateMachine):
 
         # If the user is alive and a participant but can't be loaded we have a serious issue
         try:
-            kwargs['target_user'] = users.load(kwargs['target'])
+            kwargs['target_user'] = users.load(kwargs['target'].lower())
         except KeyError:
             pass
         except FileNotFoundError:
