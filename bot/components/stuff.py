@@ -121,3 +121,32 @@ class Spell(Stuff):
     def __init__(self, **kwargs):
         kwargs['category'] = "spell"
         super(Spell, self).__init__(**kwargs)
+
+
+def factory(**kwargs):
+    """ Creates the appropriate instance from the given dictionary """
+    # Weapons
+    if kwargs['category'] == "gear":
+        if kwargs["slot"] == "weapon":
+            if kwargs['type'] == "sword":
+                return Sword(**kwargs)
+            if kwargs['type'] == "axe":
+                return Axe(**kwargs)
+            if kwargs['type'] == "bow":
+                return Bow(**kwargs)
+            raise KeyError("Bad weapon type")
+
+        # Non weapon gear
+        if kwargs["slot"] == "armor":
+            return Armor(**kwargs)
+        if kwargs["slot"] == "accessory":
+            return Accessory(**kwargs)
+        raise KeyError("Bad equipment slot")
+
+    # Non gear
+    if kwargs['category'] == "spell":
+        return Spell(**kwargs)
+    if kwargs['category'] == "item":
+        return Item(**kwargs)
+
+    raise KeyError("Bad category key")

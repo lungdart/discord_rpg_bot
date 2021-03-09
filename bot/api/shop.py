@@ -24,45 +24,35 @@ class ShopAPI():
                 parts = file_no_ext.split("_")
                 category = parts[0]
 
-                # The rest is the true weapon name using spaces
-                name = ' '.join(parts[1:])
+                fullpath = os.path.join(os.getenv('DATA_PATH'), entry.name)
                 if category == 'sword':
-                    self.weapons.append(stuff.Sword.load(name))
+                    self.weapons.append(stuff.Sword.load(fullpath))
                 elif category == 'axe':
-                    self.weapons.append(stuff.Axe.load(name))
+                    self.weapons.append(stuff.Axe.load(fullpath))
                 elif category == 'bow':
-                    self.weapons.append(stuff.Bow.load(name))
+                    self.weapons.append(stuff.Bow.load(fullpath))
                 elif category == 'armor':
-                    self.armor.append(stuff.Armor.load(name))
+                    self.armor.append(stuff.Armor.load(fullpath))
                 elif category == 'accessory':
-                    self.accessories.append(stuff.Accessory.load(name))
+                    self.accessories.append(stuff.Accessory.load(fullpath))
                 else:
                     continue
 
     def create(self, **kwargs):
         """ Creates the appropriate instance from the saved dictionary """
-        if kwargs['category'] == "gear":
-            if kwargs["slot"] == "weapon":
-                if kwargs['type'] == "sword":
-                    self.weapons.append(stuff.Sword(**kwargs))
-                elif kwargs['type'] == "axe":
-                    self.weapons.append(stuff.Axe(**kwargs))
-                elif kwargs['type'] == "bow":
-                    self.weapons.append(stuff.Bow(**kwargs))
-                else:
-                    raise KeyError("Bad weapon type")
-            elif kwargs["slot"] == "armor":
-                self.armor.append(stuff.Armor(**kwargs))
-            elif kwargs["slot"] == "accessory":
-                self.accessories.append(stuff.Accessory(**kwargs))
-            else:
-                raise KeyError("Bad equipment slot")
-        elif kwargs['category'] == "spell":
-            self.spells.append(stuff.Spell(**kwargs))
-        elif kwargs['category'] == "item":
-            self.items.append(stuff.Item(**kwargs))
+        new = stuff.factory(**kwargs)
+        if isinstance(new, stuff.Weapon):
+            self.weapons.append(new)
+        elif isinstance(new, stuff.Armor):
+            self.armor.append(new)
+        elif isinstance(new, stuff.Accessory):
+            self.accessories.append(new)
+        elif isinstance(new, stuff.Spell):
+            self.spells.append(new)
+        elif isinstance(new, stuff.Item):
+            self.items.append(new)
         else:
-            raise KeyError("Bad category key")
+            raise KeyError("Unknown item type")
 
     def list_all(self):
         """ List all items for sale """

@@ -21,11 +21,22 @@ class CharacterAPI():
                 category = parts[0]
 
                 if category == 'user':
-                    user = users.User.load(entry.name)
+                    fullpath = os.path.join(os.getenv('DATA_PATH'), entry.name)
+                    user = users.User.load(fullpath)
                     lowercase = user.name.lower()
                     self.cache[lowercase] = user
                 else:
                     continue
+
+    def create_missing(self, names):
+        """ Create any missing characters in the name list """
+        for name in names:
+            # Skip existing characters
+            lowercase = name.lower()
+            if lowercase in self.cache:
+                continue
+
+            self.create(name)
 
     def create(self, username):
         """ Creates a new user and saves to disk """

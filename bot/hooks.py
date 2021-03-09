@@ -3,18 +3,13 @@ import os
 import functools
 from discord.ext import commands as discord_commands
 import discord
-from bot.components.users import load as load_user, create as create_user
-from bot.components.stuff import load_all as load_shop
-from bot.components.logger import DiscordLogger
-import bot.api as api
+from bot.components.logging import DiscordLogger
+import bot.api
 
 ### GLOBAL VARIABLES ###
 CLIENT = discord_commands.Bot(command_prefix='!', intents=discord.Intents.all())
 CHANNEL = None
-BATTLE = None
-CHARACTERS = None
-SHOP = None
-LOGGER = None
+API = None
 
 
 ### Error handling decorators ###
@@ -24,7 +19,7 @@ def log_errors(func):
     async def wrapper(ctx, *args, **kwargs):
         try:
             return await func(ctx, *args, **kwargs)
-        except api.errors.CommandError as error:
+        except bot.api.errors.CommandError as error:
             out = LOGGER.entry()
             out.color('error')
             out.title('Command Error')
@@ -51,18 +46,18 @@ async def battle(ctx, command):
     """ Manage a battle instance """
     # No arguments indicates starting a battle
     if not command:
-        BATTLE.new()
+        API.battle.new()
     elif command == "start":
-        BATTLE.start()
+        API.battle.start()
     elif command == "stop":
-        BATTLE.stop()
+        API.battle.stop()
     elif command == "list":
         out = LOGGER.entry()
         out.title("Battle list")
         out.desc("Remember that the names are case sensitive when issuing battle actions!")
         out.field(
             title="Participants",
-            desc="\n".join(BATTLE.participants))
+            desc="\n".join(API.battle.participants))
 
     # Bad command
     else:
@@ -88,8 +83,8 @@ async def battle(ctx, command):
 @log_errors
 async def join(ctx):
     """ Join an active battle that's waiting for participants """
-    if BATTLE.is_joinable:
-        BATTLE.join(ctx.author.name)
+    if API.battle.is_joinable:
+        API.battle.join(ctx.author.name)
     else:
         log = LOGGER.entry()
         log.color("warn")
@@ -106,7 +101,7 @@ async def stats(ctx, target=None):
     if not target:
         target = ctx.author.name
 
-    cstats = api.character.stats(target)
+    cstats = API.character.stats(target)
 
     level = f"""
     **Level**: {cstats['level']}
@@ -138,7 +133,7 @@ async def inventory(ctx, target=None):
     # Grab the entire characters stats
     if not target:
         target = ctx.author.name
-    cstats = api.character.stats(target)
+    cstats = API.character.stats(target)
 
     # Developped formatted output
     equipped = f"""
@@ -163,7 +158,7 @@ async def inventory(ctx, target=None):
 @log_errors
 async def shop(ctx):
     """ View all items available in the shop """
-    stuff = api.shop.list_all()
+    stuff = API.shop.list_all()
     weapons     = '\n'.join(stuff['weapons']) if stuff['weapons'] else 'None'
     armor       = '\n'.join(stuff['armor']) if stuff['armor'] else 'None'
     accessories = '\n'.join(stuff['accessories']) if stuff['accessories'] else 'None'
@@ -187,7 +182,7 @@ async def info(ctx, *name):
     """ Get detailed information about an item """
     # Convert all additional parameters as a single name with spaces
     name = ' '.join(name)
-    details = api.shop.find_info(name)
+    details = API.shop.find_info(name)
 
     # Parse the name and description as the embed title instead of a field
     out = LOGGER.entry()
@@ -219,8 +214,9 @@ async def buy(ctx, *args):
     name = ' '.join(args)
 
     # Buy it/them
-    api.shop.buy(ctx.author.name, name, quantity)
-    cstats = api.character.stats(ctx.author.name)
+    user = API.character.get(ctx.author.name)
+    API.shop.buy(user, name, quantity)
+    cstats = API.character.stats(user)
     out = LOGGER.entry()
     out.color('success')
     out.title(f"{quantity}x {name} purchased!")
@@ -243,8 +239,9 @@ async def sell(ctx, *args):
     name = ' '.join(args)
 
     # Sell it/them
-    api.shop.sell(ctx.author.name, name, quantity)
-    cstats = api.character.stats(ctx.author.name)
+    user = API.character.get(ctx.author.name)
+    API.shop.sell(user, name, quantity)
+    cstats = API.character.stats(user)
     out = LOGGER.entry()
     out.color('success')
     out.title(f"{quantity} {name} sold!")
@@ -258,7 +255,7 @@ async def equip(ctx, *name):
     """ Equip an appropriate item into it's designated slot """
     # Converts multi word names into a single argument
     name = ' '.join(name)
-    api.character.equip(ctx.author.name, name)
+    API.character.equip(ctx.author.name, name)
 
     out = LOGGER.entry()
     out.color('success')
@@ -270,7 +267,7 @@ async def equip(ctx, *name):
 @log_errors
 async def unequip(ctx, slot):
     """ Unequip an item from the given inventory slot """
-    api.character.unequip(ctx.author.name, slot)
+    API.character.unequip(ctx.author.name, slot)
 
     out = LOGGER.entry()
     out.color('success')
@@ -282,8 +279,8 @@ async def unequip(ctx, slot):
 @log_errors
 async def attack(ctx, target):
     """ Attack a target while in battle """
-    if BATTLE.is_round_wait:
-        BATTLE.submit_action(ctx.author.name, 'attack', target=target)
+    if API.battle.is_round_wait:
+        API.battle.submit_action(ctx.author.name, 'attack', target=target)
     else:
         log = LOGGER.entry()
         log.color("warn")
@@ -297,8 +294,8 @@ async def attack(ctx, target):
 @log_errors
 async def defend(ctx):
     """ Defend for the round while in battle """
-    if BATTLE.is_round_wait:
-        BATTLE.submit_action(ctx.author.name, 'defend')
+    if API.battle.is_round_wait:
+        API.battle.submit_action(ctx.author.name, 'defend')
     else:
         log = LOGGER.entry()
         log.color("warn")
@@ -327,12 +324,13 @@ async def on_ready():
     # Fetch all members in the battle channel
     channel_id = int(os.getenv('DISCORD_CHANNEL'))
 
-    global CHANNEL, LOGGER, CHARACTERS, SHOP, BATTLE
+    global CHANNEL, LOGGER, API
     CHANNEL = CLIENT.get_channel(channel_id)
     LOGGER = DiscordLogger(CHANNEL)
-    CHARACTERS = CharacterAPI([x.name for x in CHANNEL.members], LOGGER)
-    SHOP = ShopAPI(LOGGER)
-    BATTLE = api.battle.BattleAPI(LOGGER)
+    API = bot.api.API(LOGGER)
+
+    # Create any missing characters
+    API.character.create_missing([x.name for x in CHANNEL.members])
 
 
 
