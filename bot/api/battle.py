@@ -2,14 +2,9 @@
 import random
 import threading
 from statemachine import StateMachine, State
-from bot.components import users
 from bot.api.errors import CommandError
 
-BATTLE = None
-JOIN_WAIT_SECONDS = 60
-TURN_WAIT_SECONDS = 60
-
-class Battle(StateMachine):
+class BattleAPI(StateMachine):
     """ State Machine Handler """
     stopped = State('stopped', initial=True)
     joinable = State('Joinable')
@@ -33,9 +28,10 @@ class Battle(StateMachine):
 
     stop = stopped.from_(joinable, started, round_started, round_wait, round_running, round_ended)
 
-    def __init__(self, logger):
-        super(Battle, self).__init__()
-        self.logger = logger
+    def __init__(self, parent):
+        super(BattleAPI, self).__init__()
+        self._parent = parent
+
         self.round = 0
         self.participants = {}
         self.actions = {}
@@ -52,43 +48,33 @@ class Battle(StateMachine):
         self.death_order = []
         self.action_log = None
 
-        log = self.logger.entry()
+        log = self._parent.logger.entry()
         log.title("Battle stopped")
         log.desc("The battle was stopped, any progress has been discarded.")
         log.buffer()
 
     def on_new(self):
         """ When a new battle is started """
-        log = self.logger.entry()
+        log = self._parent.logger.entry()
         log.title("Battle Started!")
         log.desc("A new battle has started! Don't forget to join the battle if you'd like to participate")
         log.field(title="Commands", desc="!join\n!battle start\n!battle stop")
         log.buffer()
 
-    def on_join(self, name):
+    def on_join(self, source):
         """ Triggered when a user joins the battle """
         # They shouldn't be able to join twice
-        if name in self.participants:
-            log = self.logger.entry()
+        if source.name in self.participants:
+            log = self._parent.logger.entry()
             log.color("warn")
-            log.title(f"You're already in the battle, {name}")
+            log.title(f"You're already in the battle, {source.name}")
             log.desc("Just be patient, it will begin soon")
-            log.buffer_pm(name)
+            log.buffer_pm(source.name)
             return
 
-        try:
-            user = users.load(name.lower())
-        except FileNotFoundError:
-            log = self.logger.entry()
-            log.color("error")
-            log.title("Join Error")
-            log.desc(f"The character by the name {name} couldn't be loaded")
-            log.buffer()
-            return
-
-        self.participants[f'{user.name}'] = user
-        log = self.logger.entry()
-        log.title(f"{name} has entered the battle field!")
+        self.participants[source.name] = source
+        log = self._parent.logger.entry()
+        log.title(f"{source.name} has entered the battle field!")
         log.desc("TODO: User descriptions")
         log.buffer()
 
@@ -97,7 +83,7 @@ class Battle(StateMachine):
         # Need 2 or more participants for a battle
         count = len(self.participants)
         if count < 2:
-            log = self.logger.entry()
+            log = self._parent.logger.entry()
             log.color("warn")
             log.title("Battle Warning")
             log.desc(f"The battle can't be started until there are 2 or more participants. We currently have {count}.")
@@ -118,14 +104,14 @@ class Battle(StateMachine):
 
     def on_wait_for_actions(self):
         """ Inform the channel and each participant they are waiting for turn inputs """
-        log = self.logger.entry()
+        log = self._parent.logger.entry()
         log.title(f"Begin Round {self.round}")
         log.desc("Everyone PM the bot with your actions you'd like to take for the round")
         log.buffer()
 
         for name in self.participants:
             # Notify the user
-            log = self.logger.entry()
+            log = self._parent.logger.entry()
             log.title(f"Waiting for round {self.round} action")
             log.desc("Remember to type your action in here. Once all actions are submitted the round results will be tallied and printed log in the channel")
             log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
@@ -135,101 +121,77 @@ class Battle(StateMachine):
             log.buffer_pm(name)
 
         # Queue up a big log for all turn actions
-        self.action_log = self.logger.entry()
+        self.action_log = self._parent.logger.entry()
         self.action_log.title(f"Round {self.round} results")
 
-    def on_submit_action(self, name, action, **kwargs):
+    def on_submit_action(self, source, action, **kwargs):
         """ Somebody submitted an action """
-        # Get the source user (Action submitter)
-        try:
-            source_user = users.load(name.lower())
-        except FileNotFoundError:
-            log = self.logger.entry()
-            log.color("error")
-            log.title("File not found")
-            log.desc(f"The character data for {name} was not found!")
-            log.buffer()
-            return
-
         # Ensure the source user can make an action
-        if not name in self.participants:
-            log = self.logger.entry()
+        if not source.name in self.participants:
+            log = self._parent.logger.entry()
             log.color("warn")
             log.title("You're not in this battle")
             log.desc(f"Dont forget to join next time with the !join command")
-            log.buffer_pm(name)
+            log.buffer_pm(source.name)
             return
 
-        if name in self.actions:
-            log = self.logger.entry()
+        if source.name in self.actions:
+            log = self._parent.logger.entry()
             log.color("warn")
             log.title("Wait for the next round")
             log.desc("You have already used your turn this round. Please wait for the next round before submitting a new action.")
-            log.buffer_pm(name)
+            log.buffer_pm(source.name)
             return
 
-        if name in self.death_order:
-            log = self.logger.entry()
+        if source.name in self.death_order:
+            log = self._parent.logger.entry()
             log.color("warn")
             log.title("You're dead!")
             log.desc("Pretty hard to submit a turn action from the grave! Better luck in the next battle.")
-            log.buffer_pm(name)
+            log.buffer_pm(source.name)
             return
 
         # Ensure the optional target user can be targeted
-        if 'target' in kwargs and not kwargs['target'] in self.participants:
-            log = self.logger.entry()
+        if 'target' in kwargs and not kwargs['target'].name in self.participants:
+            log = self._parent.logger.entry()
             log.color("warn")
             log.title(f"{kwargs['target']} isn't a participant!")
             log.desc("Try targeting someone who's actually taking part!")
             log.field(title="!battle list", desc="List all battle participants")
-            log.buffer_pm(name)
+            log.buffer_pm(source.name)
             return
 
-        if 'target' in kwargs and kwargs['target'] in self.death_order:
-            log = self.logger.entry()
+        if 'target' in kwargs and kwargs['target'].name in self.death_order:
+            log = self._parent.logger.entry()
             log.color("warn")
             log.title(f"{kwargs['target']} is dead!")
             log.desc("Don't beat a dead horse. Try picking a survivor instead...")
             log.field(title="!battle list", desc="List all battle participants")
-            log.buffer_pm(name)
-            return
-
-        # If the user is alive and a participant but can't be loaded we have a serious issue
-        try:
-            kwargs['target_user'] = users.load(kwargs['target'].lower())
-        except KeyError:
-            pass
-        except FileNotFoundError:
-            log = self.logger.entry()
-            log.color("error")
-            log.title("File not found")
-            log.desc(f"The character data for {kwargs['target']} could not be found!")
-            log.buffer()
+            log.buffer_pm(source.name)
             return
 
         if action == "attack":
-            self.actions[name] = {
+            self.actions[source.name] = {
                 "action": self._attack,
-                "args": [source_user, kwargs['target_user']]
+                "args": [source, kwargs['target']]
             }
         elif action == "defend":
-            self.actions[name] = {
+            self.actions[source.name] = {
                 "action": self._defend,
-                "args": [source_user]
+                "args": [source]
             }
         # elif action == "cast":
         #     self._cast(name, kwargs['spell'], kwargs['target'])
         # elif action == "use":
         #     self._use(name, kwargs['item'], kwargs['target'])
         else:
-            log = self.logger.entry()
+            log = self._parent.logger.entry()
             log.color("warn")
             log.title(f"Bad action name {action}")
             log.desc("I don't know how to do that. Try something that works")
             log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
             log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
-            log.buffer_pm(name)
+            log.buffer_pm(source.name)
 
         # Run the round actions once they are all submitted
         if len(self.actions) == len(self.participants):

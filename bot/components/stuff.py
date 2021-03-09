@@ -3,13 +3,6 @@ import json
 import random
 
 
-### GLOBALS
-WEAPONS = []
-ARMOR = []
-ACCESSORIES = []
-ITEMS = []
-SPELLS = []
-
 ### CLASSES
 class Stuff():
     _prefix = None
@@ -22,22 +15,17 @@ class Stuff():
         self.value = kwargs.get('value', 0)
 
     @classmethod
-    def load(cls, name):
-        """ Load user from disk """
-        underscored_name = name.replace(' ', '_')
-        filename = os.path.join(os.getenv('DATA_PATH'), f'{cls._prefix}_{underscored_name}.json')
+    def load(cls, filename):
+        """ Load object from disk """
         with open(filename, 'r') as file:
             data = json.load(file)
 
         this = cls(**data)
         return this
 
-    def save(self):
+    def save(self, filename):
         """ Saves this user to disk """
-        underscored_name = self.name.replace(' ', '_')
-        filename = os.path.join(os.getenv('DATA_PATH'), f'{self._prefix}_{underscored_name}.json')
         data = json.dumps(self.__dict__)
-
         with open(filename, 'w') as file:
             file.write(data)
 
@@ -133,69 +121,3 @@ class Spell(Stuff):
     def __init__(self, **kwargs):
         kwargs['category'] = "spell"
         super(Spell, self).__init__(**kwargs)
-
-
-### FUNCTIONS
-def factory(**kwargs):
-    """ Creates the appropriate instance from the saved dictionary """
-    if kwargs['category'] == "gear" and kwargs["slot"] == "weapon":
-        if kwargs['type'] == "sword":
-            return Sword(**kwargs)
-        if kwargs['type'] == "axe":
-            return Axe(**kwargs)
-        if kwargs['type'] == "bow":
-            return Bow(**kwargs)
-    if kwargs['category'] == "gear" and kwargs["slot"] == "armor":
-        return Armor(**kwargs)
-    if kwargs['category'] == "gear" and kwargs["slot"] == "accessory":
-        return Accessory(**kwargs)
-    if kwargs['category'] == "spell":
-        return Spell(**kwargs)
-    if kwargs['category'] == "item":
-        return Item(**kwargs)
-
-    raise KeyError("Bad category key")
-
-def load_weapons():
-    """ Load all weapon files from disk into cache """
-    for entry in os.scandir(os.getenv('DATA_PATH')):
-        if entry.is_file():
-            # First word is the weapon type (category)
-            file_no_ext = os.path.splitext(entry.name)[0]
-            parts = file_no_ext.split("_")
-            category = parts[0]
-
-            # The rest is the true weapon name using spaces
-            name = ' '.join(parts[1:])
-            if category == 'sword':
-                new_weapon = Sword.load(name)
-            elif category == 'axe':
-                new_weapon = Axe.load(name)
-            elif category == 'bow':
-                new_weapon = Bow.load(name)
-            else:
-                continue
-
-            # Append and look for the next one
-            WEAPONS.append(new_weapon)
-            continue
-
-
-def load_armor():
-    """ Loads armor for sale from disk """
-    pass
-
-def load_accessories():
-    """ Loads accessories for sale from disk """
-    pass
-
-def load_spells():
-    """ Loads spells for sale from disk """
-    pass
-
-def load_all():
-    """ Loads all available items for sale from disk """
-    load_weapons()
-    load_armor()
-    load_accessories()
-    load_spells()

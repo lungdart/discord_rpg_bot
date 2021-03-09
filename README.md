@@ -14,13 +14,17 @@ The following commands are used within the context of a battle, either to manage
 | `!attack <target>` | Attack a target                                  |
 | `!defend`          | Defend against physical attacks                  |
 
-## Out of battle
+## Character Management
 | Command               | Description                           |
 |-----------------------|---------------------------------------|
 | `!stats`              | Check your stats                      |
 | `!stats <target>`     | Check another characters stats        |
 | `!inventory`          | Check your inventory                  |
 | `!inventory <target>` | Check another characters inventory    |
+
+## Shopping
+| Command               | Description                           |
+|-----------------------|---------------------------------------|
 | `!shop`               | View what's for sale in the shop      |
 | `!buy <target>`       | Buy an item from the shop with gold   |
 | `!unequip <target>`   | Unequip whatever is in the given slot |

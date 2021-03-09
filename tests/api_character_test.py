@@ -1,11 +1,11 @@
 import os
 import shutil
 import pytest
-from bot.components import users, stuff
-from bot.api import character, errors
+from bot.components import users, stuff, logging
+import bot.api
 
 @pytest.fixture
-def environment():
+def env():
     """ Configures the environment before and after tests """
     # Change the save path to the /tmp part of the disk to avoid data clobbering
     try:
@@ -15,24 +15,29 @@ def environment():
     os.makedirs('/tmp/discord_bot/test')
     os.environ["DATA_PATH"] = '/tmp/discord_bot/test'
 
-    stuff.WEAPONS = [stuff.Sword(name="test sword", desc="You should never see this", power=1, value=10)]
-    stuff.ARMOR = [stuff.Armor(name="test armor", desc="You should never see this", toughness=1, value=10)]
-    stuff.ACCESSORIES = [stuff.Accessory(name="test accessory", desc="You should never see this", value=10)]
-    users.create("user")
+    class Fixture():
+        weapon = stuff.Sword(name="test sword", desc="You should never see this", power=1, value=10)
+        armor = stuff.Armor(name="test armor", desc="You should never see this", toughness=1, value=10)
+        accessory = stuff.Accessory(name="test accessory", desc="You should never see this", value=10)
 
-    yield
+        def __init__(self):
+            self.logger = logging.NullLogger()
+            self.api = bot.api.API(self.logger)
+            self.api.character.create("User")
 
-    users.CACHE = {}
-    stuff.WEAPONS = []
-    stuff.ARMOR = []
+    yield Fixture()
+
     shutil.rmtree('/tmp/discord_bot')
 
 #@pytest.mark.skip(reason="implementing")
-def test_stats(environment): # pylint: disable=redefined-outer-name,unused-argument
+def test_stats(env): # pylint: disable=redefined-outer-name,unused-argument
     """ Tests the stats command """
-    user = users.load('user')
-    stats = character.stats('user')
+    # Test getting stats for a bad user
+    with pytest.raises(bot.api.errors.CommandError):
+        env.api.character.stats("foobar")
 
+    user = env.api.character.get('UsEr')
+    stats = env.api.character.stats('UsEr')
     assert stats['username'] == user.name
     assert stats['level'] == user.level
     assert stats['experience'] == user.experience
@@ -58,56 +63,61 @@ def test_stats(environment): # pylint: disable=redefined-outer-name,unused-argum
     assert len(stats['inventory']) == 0
 
 #@pytest.mark.skip(reason="implementing")
-def test_equip(environment): # pylint: disable=redefined-outer-name,unused-argument
+def test_equip(env): # pylint: disable=redefined-outer-name,unused-argument
     """ Tests equipping """
+
     # User should be empty to start, with equipment in inventory
-    user = users.load('user')
-    user.give(stuff.WEAPONS[0])
-    user.give(stuff.ARMOR[0])
-    user.give(stuff.ACCESSORIES[0])
-    stats = character.stats('user')
+    user = env.api.character.get('UsEr')
+    user.give(env.weapon)
+    user.give(env.armor)
+    user.give(env.accessory)
+    stats = env.api.character.stats('UsEr')
     assert len(stats['inventory']) == 3
     assert stats['weapon'] == 'Empty'
     assert stats['armor'] == 'Empty'
     assert stats['accessory'] == 'Empty'
 
-    # Ensure user can't equip jibberish
-    with pytest.raises(errors.CommandError):
-        character.equip('user', 'foobar')
+    # Test edge cases
+    with pytest.raises(bot.api.errors.CommandError):
+        env.api.character.equip("foobar", env.weapon.name)
+    with pytest.raises(bot.api.errors.CommandError):
+        env.api.character.equip('UsEr', 'foobar')
 
     # Actually equip the gear and ensure it modifies the character correctly, and comes out of inventory
-    character.equip('user', stuff.WEAPONS[0].name)
-    character.equip('user', stuff.ARMOR[0].name)
-    character.equip('user', stuff.ACCESSORIES[0].name)
-    stats = character.stats('user')
+    env.api.character.equip('UsEr', env.weapon.name)
+    env.api.character.equip('UsEr', env.armor.name)
+    env.api.character.equip('UsEr', env.accessory.name)
+    stats = env.api.character.stats('UsEr')
     assert len(stats['inventory']) == 0
-    assert stats['weapon'] == stuff.WEAPONS[0].name
-    assert stats['armor'] == stuff.ARMOR[0].name
-    assert stats['accessory'] == stuff.ACCESSORIES[0].name
-    assert stats['power'] == stuff.WEAPONS[0].power
-    assert stats['toughness'] == stuff.ARMOR[0].toughness
+    assert stats['weapon'] == env.weapon.name
+    assert stats['armor'] == env.armor.name
+    assert stats['accessory'] == env.accessory.name
+    assert stats['power'] == env.weapon.power
+    assert stats['toughness'] == env.armor.toughness
 
 #@pytest.mark.skip(reason="implementing")
-def test_unequip(environment): # pylint: disable=redefined-outer-name,unused-argument
+def test_unequip(env): # pylint: disable=redefined-outer-name,unused-argument
     """ Tests unequipping works correctly """
-    user = users.load('user')
-    user.give(stuff.WEAPONS[0])
-    user.give(stuff.ARMOR[0])
-    user.give(stuff.ACCESSORIES[0])
-    character.equip('user', stuff.WEAPONS[0].name)
-    character.equip('user', stuff.ARMOR[0].name)
-    character.equip('user', stuff.ACCESSORIES[0].name)
+    user = env.api.character.get('UsEr')
+    user.give(env.weapon)
+    user.give(env.armor)
+    user.give(env.accessory)
+    env.api.character.equip('UsEr', env.weapon.name)
+    env.api.character.equip('UsEr', env.armor.name)
+    env.api.character.equip('UsEr', env.accessory.name)
 
-    # Ensure you can't just unequip jibberish
-    with pytest.raises(errors.CommandError):
-        character.unequip('user', 'foobar')
+    # Test getting stats for a bad user
+    with pytest.raises(bot.api.errors.CommandError):
+        env.api.character.unequip("foobar", "weapon")
+    with pytest.raises(bot.api.errors.CommandError):
+        env.api.character.unequip('UsEr', 'foobar')
 
     # Actually unequip and ensure everythings back to normal
-    character.unequip('user', "weapon")
-    character.unequip('user', "armor")
-    character.unequip('user', "accessory")
+    env.api.character.unequip('UsEr', "weapon")
+    env.api.character.unequip('UsEr', "armor")
+    env.api.character.unequip('UsEr', "accessory")
 
-    stats = character.stats('user')
+    stats = env.api.character.stats('UsEr')
     assert len(stats['inventory']) == 3
     assert stats['weapon'] == 'Empty'
     assert stats['armor'] == 'Empty'

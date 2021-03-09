@@ -1,12 +1,12 @@
 import os
 import shutil
 import pytest
-from bot.components import users, stuff, logger
-from bot.api import battle, errors
+from bot.components import stuff, logging
+import bot.api
 
 ### FIXTURES ###
 @pytest.fixture
-def new_battle():
+def env():
     """ Configures the environment before and after tests """
     # Change the save path to the /tmp part of the disk to avoid data clobbering
     try:
@@ -16,75 +16,78 @@ def new_battle():
     os.makedirs('/tmp/discord_bot/test')
     os.environ["DATA_PATH"] = '/tmp/discord_bot/test'
 
-    # Create some users to battle with, and equip one with stuff
-    users.create("user1")
-    winner = users.create("user2")
-    winner.give(stuff.Sword(name="test sword", desc="You should never see this", power=25, value=10))
-    winner.give(stuff.Armor(name="test armor", desc="You should never see this", toughness=25, value=10))
-    winner.equip('test sword')
-    winner.equip('test armor')
+    class Fixture():
+        weapon = stuff.Sword(name="test sword", desc="You should never see this", power=25, value=10)
+        armor = stuff.Armor(name="test armor", desc="You should never see this", toughness=25, value=10)
 
-    instance = battle.Battle(logger.NullLogger())
+        def __init__(self):
+            self.api = bot.api.API(logging.NullLogger())
+            self.api.character.create("User1")
+            self.api.character.create("User2")
 
-    yield instance
+            # Configure the winning user with test gear
+            winner = self.api.character.get('user1')
+            winner.give(self.weapon)
+            winner.give(self.armor)
+            winner.equip('test sword')
+            winner.equip('test armor')
 
-    users.CACHE = {}
-    stuff.WEAPONS = []
-    stuff.ARMOR = []
+    yield Fixture()
+
     shutil.rmtree('/tmp/discord_bot')
 
 
 ### TESTS ###
 #@pytest.mark.skip(reason="implementing")
-def test_start_join_stop(new_battle): # pylint: disable=redefined-outer-name,unused-argument
+def test_start_join_stop(env): # pylint: disable=redefined-outer-name,unused-argument
     """ Tests the start join and stop battle sequences """
-    assert new_battle.is_stopped
+    assert env.api.battle.is_stopped
 
-    new_battle.new()
-    assert new_battle.is_joinable
+    env.api.battle.new()
+    assert env.api.battle.is_joinable
 
-    user1 = users.load('user1')
-    user2 = users.load('user2')
-    new_battle.join('user1')
-    new_battle.join('user2')
-    assert len(new_battle.participants) == 2
+    user1 = env.api.character.get('user1')
+    user2 = env.api.character.get('user2')
+    env.api.battle.join(user1)
+    env.api.battle.join(user2)
+    assert len(env.api.battle.participants) == 2
 
     # Shouldn't be able to join twice
-    new_battle.join('user1')
-    assert len(new_battle.participants) == 2
+    env.api.battle.join(user1)
+    assert len(env.api.battle.participants) == 2
 
-    new_battle.start()
-    assert new_battle.is_round_wait
+    env.api.battle.start()
+    assert env.api.battle.is_round_wait
 
-    new_battle.stop()
-    assert new_battle.is_stopped
+    env.api.battle.stop()
+    assert env.api.battle.is_stopped
 
 #@pytest.mark.skip(reason="implementing")
-def test_attack_defend(new_battle): # pylint: disable=redefined-outer-name,unused-argument
+def test_attack_defend(env): # pylint: disable=redefined-outer-name,unused-argument
     """ Tests the attacking and defending commands in battle """
-    new_battle.new()
+    env.api.battle.new()
 
-    user1 = users.load('user1')
-    user2 = users.load('user2')
-    new_battle.join('user1')
-    new_battle.join('user2')
-    new_battle.start()
+    user1 = env.api.character.get('user1')
+    user2 = env.api.character.get('user2')
+    env.api.battle.join(user1)
+    env.api.battle.join(user2)
+    env.api.battle.start()
 
     # First command
-    assert new_battle.is_round_wait
-    new_battle.submit_action('user1', 'attack', target="user2")
+    assert env.api.battle.is_round_wait
+    env.api.battle.submit_action(user1, 'attack', target=user2)
 
     # Last command
-    assert new_battle.is_round_wait
-    new_battle.submit_action('user2', 'defend')
+    assert env.api.battle.is_round_wait
+    env.api.battle.submit_action(user2, 'defend')
 
     # This should be a new round, with damage to user2
-    assert new_battle.is_round_wait
+    assert env.api.battle.is_round_wait
     assert user1.life.current == user1.life.base
     assert user2.life.current < user2.life.base
 
-    new_battle.submit_action('user1', 'defend')
-    new_battle.submit_action('user2', 'attack', target='user1')
+    env.api.battle.submit_action(user1, 'defend')
+    env.api.battle.submit_action(user2, 'attack', target=user1)
     assert user1.life.current == user1.life.base
 
-    new_battle.stop()
+    env.api.battle.stop()

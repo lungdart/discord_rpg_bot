@@ -5,10 +5,6 @@ from bot.components.stats import CoreStat, DerivedStat
 import bot.components.stuff as stuff
 
 
-### GLOBALS
-CACHE = {}
-
-
 ### CLASS DEFINITIONS
 class User():
     """ User object """
@@ -51,15 +47,12 @@ class User():
         return this
 
     @classmethod
-    def load(cls, name):
+    def load(cls, filename):
         """ Load user from disk """
-        formatted_name = name.lower().replace(' ', '_')
-        filename = f'user_{formatted_name}.json'
-        full_path = os.path.join(os.getenv('DATA_PATH'), filename)
-        with open(full_path, 'r') as file:
+        with open(filename, 'r') as file:
             data = json.load(file)
 
-        this = cls(name)
+        this = cls(data["name"])
         this.level = data["level"]
         this.experience = data["experience"]
 
@@ -68,9 +61,9 @@ class User():
         this.agility = CoreStat(data["agility"])
         this._derive_stats()
 
-        this.weapon = stuff.factory(**data["weapon"])
-        this.armor = stuff.factory(**data["armor"])
-        this.accessory = stuff.factory(**data["accessory"])
+        this.weapon = stuff.factory(**data["weapon"]) if data.get("weapon") else None
+        this.armor = stuff.factory(**data["armor"]) if data.get("armor") else None
+        this.accessory = stuff.factory(**data["accessory"]) if data.get("accessory") else None
 
         for kwargs in data["inventory"]:
             this.inventory.append(stuff.factory(**kwargs))
@@ -81,15 +74,10 @@ class User():
 
         return this
 
-    def save(self):
+    def save(self, filename):
         """ Saves this user to disk """
-        # Store everything in lower case, with underscores instead of spaces
-        formatted_name = self.name.lower().replace(' ', '_')
-        filename = f'user_{formatted_name}.json'
-        full_path = os.path.join(os.getenv('DATA_PATH'), filename)
-
         data = UserEncoder().encode(self)
-        with open(full_path, 'w') as file:
+        with open(filename, 'w') as file:
             file.write(data)
 
     def restore(self):
@@ -109,7 +97,6 @@ class User():
     def earn(self, amount):
         """ Earn new monies """
         self._gold += amount
-        self.save()
 
     def spend(self, amount):
         """ Spend old monies """
@@ -244,42 +231,3 @@ class UserEncoder(json.JSONEncoder):
 
         else:
             return json.JSONEncoder.default(self, obj)
-
-
-### USER FETCHING
-def create(name):
-    """ Creates a new user and saves to disk """
-    user = User.create(name)
-    CACHE[name] = user
-    user.save()
-
-    return user
-
-def load(name):
-    """ Get's the named user instance """
-    # Fetch user from cache first
-    try:
-        user = CACHE[name]
-        return user
-    except KeyError:
-        pass
-
-    # If their not in cache, load from disk. (Will throw FileNotFound error if missing)
-    user = User.load(name)
-    CACHE[name] = user
-
-    return user
-
-def unload(name):
-    """ Save then unload a user from cache """
-    try:
-        # Try to save the user first
-        user = CACHE[name]
-        user.save()
-
-        # Remove from cache
-        del CACHE[name]
-
-    except KeyError:
-        # User wasn't loaded, ignore
-        pass

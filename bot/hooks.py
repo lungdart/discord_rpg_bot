@@ -12,6 +12,8 @@ import bot.api as api
 CLIENT = discord_commands.Bot(command_prefix='!', intents=discord.Intents.all())
 CHANNEL = None
 BATTLE = None
+CHARACTERS = None
+SHOP = None
 LOGGER = None
 
 
@@ -325,20 +327,13 @@ async def on_ready():
     # Fetch all members in the battle channel
     channel_id = int(os.getenv('DISCORD_CHANNEL'))
 
-    global CHANNEL, LOGGER, BATTLE
+    global CHANNEL, LOGGER, CHARACTERS, SHOP, BATTLE
     CHANNEL = CLIENT.get_channel(channel_id)
     LOGGER = DiscordLogger(CHANNEL)
-    BATTLE = api.battle.Battle(LOGGER)
+    CHARACTERS = CharacterAPI([x.name for x in CHANNEL.members], LOGGER)
+    SHOP = ShopAPI(LOGGER)
+    BATTLE = api.battle.BattleAPI(LOGGER)
 
-    # Load in all users in the channel
-    for member in CHANNEL.members:
-        try:
-            load_user(member.name.lower())
-        except FileNotFoundError:
-            create_user(member.name)
-
-    # Load all shop items
-    load_shop()
 
 
 def start_client(token):

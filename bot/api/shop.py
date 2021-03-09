@@ -1,167 +1,219 @@
 """ Shopping commands """
+import os
 from bot.components import users, stuff
 from bot.api.errors import CommandError
 
-def list_all():
-    """ List all items for sale """
-    result = {
-        'weapons'    : list_weapons(),
-        'armor'      : list_armor(),
-        'accessories': list_accessories(),
-        'items'      : list_items(),
-        'spells'     : list_spells(),
-    }
+class ShopAPI():
+    """ Shop API utilizing caching """
+    def __init__(self, parent):
+        self._parent = parent
 
-    return result
+        self.weapons = []
+        self.armor = []
+        self.accessories = []
+        self.items = []
+        self.spells = []
+        self.load_all()
 
-def list_weapons():
-    """ List only weapons for sale """
-    return [x.name for x in stuff.WEAPONS]
+    def load_all(self):
+        """ Loads the shop form the disk """
+        for entry in os.scandir(os.getenv('DATA_PATH')):
+            if entry.is_file():
+                # First word is the weapon type (category)
+                file_no_ext = os.path.splitext(entry.name)[0]
+                parts = file_no_ext.split("_")
+                category = parts[0]
 
-def list_armor():
-    """ List only armor for sale """
-    return [x.name for x in stuff.ARMOR]
+                # The rest is the true weapon name using spaces
+                name = ' '.join(parts[1:])
+                if category == 'sword':
+                    self.weapons.append(stuff.Sword.load(name))
+                elif category == 'axe':
+                    self.weapons.append(stuff.Axe.load(name))
+                elif category == 'bow':
+                    self.weapons.append(stuff.Bow.load(name))
+                elif category == 'armor':
+                    self.armor.append(stuff.Armor.load(name))
+                elif category == 'accessory':
+                    self.accessories.append(stuff.Accessory.load(name))
+                else:
+                    continue
 
-def list_accessories():
-    """ List only accessories for sale """
-    return [x.name for x in stuff.ACCESSORIES]
+    def create(self, **kwargs):
+        """ Creates the appropriate instance from the saved dictionary """
+        if kwargs['category'] == "gear":
+            if kwargs["slot"] == "weapon":
+                if kwargs['type'] == "sword":
+                    self.weapons.append(stuff.Sword(**kwargs))
+                elif kwargs['type'] == "axe":
+                    self.weapons.append(stuff.Axe(**kwargs))
+                elif kwargs['type'] == "bow":
+                    self.weapons.append(stuff.Bow(**kwargs))
+                else:
+                    raise KeyError("Bad weapon type")
+            elif kwargs["slot"] == "armor":
+                self.armor.append(stuff.Armor(**kwargs))
+            elif kwargs["slot"] == "accessory":
+                self.accessories.append(stuff.Accessory(**kwargs))
+            else:
+                raise KeyError("Bad equipment slot")
+        elif kwargs['category'] == "spell":
+            self.spells.append(stuff.Spell(**kwargs))
+        elif kwargs['category'] == "item":
+            self.items.append(stuff.Item(**kwargs))
+        else:
+            raise KeyError("Bad category key")
 
-def list_items():
-    """ List only items for sale """
-    return [x.name for x in stuff.ITEMS]
+    def list_all(self):
+        """ List all items for sale """
+        result = {
+            'weapons'    : self.list_weapons(),
+            'armor'      : self.list_armor(),
+            'accessories': self.list_accessories(),
+            'items'      : self.list_items(),
+            'spells'     : self.list_spells(),
+        }
 
-def list_spells():
-    """ List only spells for sale """
-    return [x.name for x in stuff.SPELLS]
+        return result
 
-def find_info(name):
-    """ Get the info for any item by name """
-    if name in list_weapons():
-        return weapon_info(name)
-    if name in list_armor():
-        return armor_info(name)
-    if name in list_accessories():
-        return accessory_info(name)
-    if name in list_items():
-        return item_info(name)
-    if name in list_spells():
-        return spell_info(name)
-    raise CommandError(f"Couldn't find anything by the name {name} for sale")
+    def list_weapons(self):
+        """ List only weapons for sale """
+        return [x.name for x in self.weapons]
 
-def weapon_info(name):
-    """ Gets weapons info by name """
-    for item in stuff.WEAPONS:
-        if item.name == name:
-            return {
-                'name' : item.name,
-                'desc' : item.desc,
-                'power': item.power,
-                'value': item.value
-            }
+    def list_armor(self):
+        """ List only armor for sale """
+        return [x.name for x in self.armor]
 
-    raise CommandError(f"Couldn't find a weapon for sale by the name {name}")
+    def list_accessories(self):
+        """ List only accessories for sale """
+        return [x.name for x in self.accessories]
 
-def armor_info(name):
-    """ Gets armor info by name """
-    for item in stuff.ARMOR:
-        if item.name == name:
-            return {
-                'name'      : item.name,
-                'desc'      : item.desc,
-                'toughness' : item.toughness,
-                'value'     : item.value
-            }
+    def list_items(self):
+        """ List only items for sale """
+        return [x.name for x in self.items]
 
-    raise CommandError(f"Couldn't find armor for sale by the name {name}")
+    def list_spells(self):
+        """ List only spells for sale """
+        return [x.name for x in self.spells]
 
-def accessory_info(name):
-    """ Gets accessory info by name """
-    for item in stuff.ACCESSORIES:
-        if item.name == name:
-            return {
-                'name' : item.name,
-                'desc' : item.desc,
-                'value': item.value
-            }
+    def find_info(self, name):
+        """ Get the info for any item by name """
+        if name in self.list_weapons():
+            return self.weapon_info(name)
+        if name in self.list_armor():
+            return self.armor_info(name)
+        if name in self.list_accessories():
+            return self.accessory_info(name)
+        if name in self.list_items():
+            return self.item_info(name)
+        if name in self.list_spells():
+            return self.spell_info(name)
+        raise CommandError(f"Couldn't find anything by the name {name} for sale")
 
-    raise CommandError(f"Couldn't find an accessory for sale by the name {name}")
+    def weapon_info(self, name):
+        """ Gets weapons info by name """
+        for item in self.weapons:
+            if item.name == name:
+                return {
+                    'name' : item.name,
+                    'desc' : item.desc,
+                    'power': item.power,
+                    'value': item.value
+                }
 
-def item_info(name):
-    """ Gets item info by name """
-    for item in stuff.ITEMS:
-        if item.name == name:
-            return {
-                'name' : item.name,
-                'desc' : item.desc,
-                'value': item.value
-            }
+        raise CommandError(f"Couldn't find a weapon for sale by the name {name}")
 
-    raise CommandError(f"Couldn't find an item for sale by the name {name}")
+    def armor_info(self, name):
+        """ Gets armor info by name """
+        for item in self.armor:
+            if item.name == name:
+                return {
+                    'name'      : item.name,
+                    'desc'      : item.desc,
+                    'toughness' : item.toughness,
+                    'value'     : item.value
+                }
 
-def spell_info(name):
-    """ Gets spell info by name """
-    for item in stuff.SPELLS:
-        if item.name == name:
-            return {
-                'name' : item.name,
-                'desc' : item.desc,
-                'value': item.value
-            }
+        raise CommandError(f"Couldn't find armor for sale by the name {name}")
 
-    raise CommandError(f"Couldn't find a spell for sale by the name {name}")
+    def accessory_info(self, name):
+        """ Gets accessory info by name """
+        for item in self.accessories:
+            if item.name == name:
+                return {
+                    'name' : item.name,
+                    'desc' : item.desc,
+                    'value': item.value
+                }
 
-def buy(username, name, quantity=1):
-    """ Buy an item from the for sale list """
-    try:
-        target = users.load(username.lower())
-    except FileNotFoundError:
-        raise CommandError(f"Username {username} does not exist!")
+        raise CommandError(f"Couldn't find an accessory for sale by the name {name}")
 
-    if quantity < 1:
-        raise CommandError(f"{quantity} is an invalid quantity to purchase!")
+    def item_info(self, name):
+        """ Gets item info by name """
+        for item in self.items:
+            if item.name == name:
+                return {
+                    'name' : item.name,
+                    'desc' : item.desc,
+                    'value': item.value
+                }
 
-    # Find the item
-    if name in list_weapons():
-        found = stuff.WEAPONS
-    elif name in list_armor():
-        found = stuff.ARMOR
-    elif name in list_accessories():
-        found = stuff.ACCESSORIES
-    elif name in list_items():
-        found = stuff.ITEMS
-    elif name in list_spells():
-        found = stuff.SPELLS
-    else:
-        raise CommandError(f"Couldn't find anything for sale by the name {name}")
-    item = next((x for x in found if x.name == name))
+        raise CommandError(f"Couldn't find an item for sale by the name {name}")
 
-    # Perform the transaction
-    cost = item.value * quantity
-    if not target.spend(cost):
-        raise CommandError(f"{username} does not have enough gold to purchase {quantity}x {item.name}")
-    target.give(item, quantity)
+    def spell_info(self, name):
+        """ Gets spell info by name """
+        for item in self.spells:
+            if item.name == name:
+                return {
+                    'name' : item.name,
+                    'desc' : item.desc,
+                    'value': item.value
+                }
 
-    # Save the target when finished
-    target.save()
+        raise CommandError(f"Couldn't find a spell for sale by the name {name}")
 
-def sell(username, name, quantity=1):
-    """ Sell x item's from a users inventory """
-    try:
-        target = users.load(username.lower())
-    except FileNotFoundError:
-        raise CommandError(f"Username {username} does not exist!")
+    def buy(self, target, name, quantity=1):
+        """ Buy an item from the for sale list """
+        if quantity < 1:
+            raise CommandError(f"{quantity} is an invalid quantity to purchase!")
 
-    # Ensure user has enough to sell
-    value = 0
-    for entry in target.inventory:
-        if entry['item'].name == name:
-            value = entry['item'].value * quantity
-            break
+        # Find the item
+        if name in self.list_weapons():
+            found = self.weapons
+        elif name in self.list_armor():
+            found = self.armor
+        elif name in self.list_accessories():
+            found = self.accessories
+        elif name in self.list_items():
+            found = self.items
+        elif name in self.list_spells():
+            found = self.spells
+        else:
+            raise CommandError(f"Couldn't find anything for sale by the name {name}")
+        item = next((x for x in found if x.name == name))
 
-    # Do the transaction
-    if not target.drop(name, quantity):
-        raise CommandError(f"{username} doesn't have {quantity} {name} to sell")
-    target.earn(value)
+        # Perform the transaction
+        cost = item.value * quantity
+        if not target.spend(cost):
+            raise CommandError(f"{target.name} does not have enough gold to purchase {quantity}x {item.name}")
+        target.give(item, quantity)
 
-    # Save the target when finished
-    target.save()
+        # Save the character
+        self._parent.character.save(target.name)
+
+    def sell(self, target, name, quantity=1):
+        """ Sell x item's from a users inventory """
+        # Ensure user has enough to sell
+        value = 0
+        for entry in target.inventory:
+            if entry['item'].name == name:
+                value = entry['item'].value * quantity
+                break
+
+        # Do the transaction
+        if not target.drop(name, quantity):
+            raise CommandError(f"{target.name} doesn't have {quantity} {name} to sell")
+        target.earn(value)
+
+        # Save the character
+        self._parent.character.save(target.name)
