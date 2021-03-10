@@ -1,0 +1,7 @@
+{
+    "type": "sword",
+    "name": "steel sword",
+    "desc": "A long steel sword with an intricate guard. Very versatile, and very strong.",
+    "power": 30,
+    "value": 1000
+}

@@ -1,0 +1,7 @@
+{
+    "type": "axe",
+    "name": "bronze axe",
+    "desc": "A bronze hatchet used for hewing wood. It works but it's delicate.",
+    "power": 15,
+    "value": 250
+}

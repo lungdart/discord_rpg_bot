@@ -1,0 +1,7 @@
+{
+    "type": "bow",
+    "name": "cross bow",
+    "desc": "A marvel of technology!",
+    "power": 30,
+    "value": 1000
+}

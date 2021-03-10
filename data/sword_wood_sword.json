@@ -1,0 +1,7 @@
+{
+    "type": "sword",
+    "name": "wood sword",
+    "desc": "A wooden short sword used for training",
+    "power": 5,
+    "value": 50
+}

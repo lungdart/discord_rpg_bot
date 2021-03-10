@@ -1,0 +1,7 @@
+{
+    "type": "bow",
+    "name": "long bow",
+    "desc": "A classic weapon of war. Not much can escape the long range and power",
+    "power": 15,
+    "value": 250
+}

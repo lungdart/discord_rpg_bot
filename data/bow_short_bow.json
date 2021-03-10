@@ -1,0 +1,7 @@
+{
+    "type": "bow",
+    "name": "short bow",
+    "desc": "A hobbyists bow used mostly for small game hunting.",
+    "power": 5,
+    "value": 50
+}

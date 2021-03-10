@@ -1,0 +1,7 @@
+{
+    "type": "sword",
+    "name": "bronze sword",
+    "desc": "A bronze battle sword. It's a little short, but very sharp!",
+    "power": 15,
+    "value": 250
+}
