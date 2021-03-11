@@ -28,7 +28,7 @@ Once it's finished building you should see a new image without a repo or tag
 ```bash
 sudo docker image list
 REPOSITORY              TAG                 IMAGE ID            CREATED             SIZE
-<none>                  <none>              82dc8afb8e95        8 minutes ago       910MB
+<none>                  <none>              >>>look here<<<     8 minutes ago       910MB
 ```
 
 #### Run an instance
@@ -39,7 +39,8 @@ sudo docker run -d \
   -e DISCORD_TOKEN=$TOKEN \
   -e DISCORD_GUILD=$GUILD_ID \
   -e DISCORD_CHANNEL=$CHANNEL_ID \
-  -v $PATH_TO_DATA:/data \
+  -v $PATH_TO_DATA:/data `# Optional for custom items and access to user files` \
+  -v $PATH_TO_LOG:/log `# Optional for accessing logs` \
   --restart unless-stopped \
   $IMAGE_ID
 ```
