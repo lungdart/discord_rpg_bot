@@ -1,8 +1,10 @@
 """ Hooks the API into discord commands """
 import os
+import sys
 import functools
-from discord.ext import commands as discord_commands
+from datetime import datetime
 import discord
+from discord.ext import commands as discord_commands
 from bot.components.logging import DiscordLogger
 import bot.api
 
@@ -13,11 +15,22 @@ API = None
 
 
 ### Error handling decorators ###
+def log_out(command, author, *args, **kwargs):
+    """ Logs events to stdout """
+    dt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    str_args = str(args)
+    str_kwargs = str(kwargs)
+    template = f"[{dt}] - {author} - !{command} *args={str_args}, **kwargs={str_kwargs}\n"
+    sys.stdout.write(template)
+    sys.stdout.flush()
+
+
 def log_errors(func):
     """ Automatically logs errors correctly """
     @functools.wraps(func)
     async def wrapper(ctx, *args, **kwargs):
         try:
+            log_out(func.__name__, ctx.author.name, *args, **kwargs)
             return await func(ctx, *args, **kwargs)
         except bot.api.errors.CommandError as error:
             out = LOGGER.entry()
@@ -42,7 +55,7 @@ def log_errors(func):
 ### COMMAND HOOKS ###
 @CLIENT.command()
 @log_errors
-async def battle(ctx, command):
+async def battle(ctx, command=None):
     """ Manage a battle instance """
     # No arguments indicates starting a battle
     if not command:
@@ -53,11 +66,9 @@ async def battle(ctx, command):
         API.battle.stop()
     elif command == "list":
         out = LOGGER.entry()
-        out.title("Battle list")
-        out.desc("Remember that the names are case sensitive when issuing battle actions!")
-        out.field(
-            title="Participants",
-            desc="\n".join(API.battle.participants))
+        out.title(f"Battle participants ({len(API.battle.participants)})")
+        out.desc("\n".join(API.battle.participants) if API.battle.participants else "None")
+        out.buffer_pm(ctx.author.name)
 
     # Bad command
     else:
@@ -84,7 +95,8 @@ async def battle(ctx, command):
 async def join(ctx):
     """ Join an active battle that's waiting for participants """
     if API.battle.is_joinable:
-        API.battle.join(ctx.author.name)
+        user = API.character.get(ctx.author.name)
+        API.battle.join(user)
     else:
         log = LOGGER.entry()
         log.color("warn")
@@ -216,7 +228,7 @@ async def buy(ctx, *args):
     # Buy it/them
     user = API.character.get(ctx.author.name)
     API.shop.buy(user, name, quantity)
-    cstats = API.character.stats(user)
+    cstats = API.character.stats(ctx.author.name)
     out = LOGGER.entry()
     out.color('success')
     out.title(f"{quantity}x {name} purchased!")
@@ -241,7 +253,7 @@ async def sell(ctx, *args):
     # Sell it/them
     user = API.character.get(ctx.author.name)
     API.shop.sell(user, name, quantity)
-    cstats = API.character.stats(user)
+    cstats = API.character.stats(ctx.author.name)
     out = LOGGER.entry()
     out.color('success')
     out.title(f"{quantity} {name} sold!")

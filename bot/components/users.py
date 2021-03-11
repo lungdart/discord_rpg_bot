@@ -65,8 +65,10 @@ class User():
         this.armor = stuff.factory(**data["armor"]) if data.get("armor") else None
         this.accessory = stuff.factory(**data["accessory"]) if data.get("accessory") else None
 
-        for kwargs in data["inventory"]:
-            this.inventory.append(stuff.factory(**kwargs))
+        for entry in data["inventory"]:
+            item = stuff.factory(**entry["item"])
+            new_entry = {"item": item, "quantity": entry["quantity"]}
+            this.inventory.append(new_entry)
         for kwargs in data["spells"]:
             this.spells.append(stuff.factory(**kwargs))
 
