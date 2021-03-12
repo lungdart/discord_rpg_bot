@@ -289,10 +289,12 @@ async def unequip(ctx, slot):
 
 @CLIENT.command()
 @log_errors
-async def attack(ctx, target):
+async def attack(ctx, target_name):
     """ Attack a target while in battle """
     if API.battle.is_round_wait:
-        API.battle.submit_action(ctx.author.name, 'attack', target=target)
+        source = API.character.get(ctx.author.name)
+        target = API.character.get(target_name)
+        API.battle.submit_action(source, 'attack', target=target)
     else:
         log = LOGGER.entry()
         log.color("warn")
@@ -307,7 +309,8 @@ async def attack(ctx, target):
 async def defend(ctx):
     """ Defend for the round while in battle """
     if API.battle.is_round_wait:
-        API.battle.submit_action(ctx.author.name, 'defend')
+        source = API.character.get(ctx.author.name)
+        API.battle.submit_action(source, 'defend')
     else:
         log = LOGGER.entry()
         log.color("warn")

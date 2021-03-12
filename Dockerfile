@@ -11,4 +11,4 @@ RUN mkdir /log
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m pytest tests/
 
-CMD python -m bot >> /log/discord_rpg_bot.log
+CMD python -m bot >> /log/discord_rpg_bot.log 2>&1
