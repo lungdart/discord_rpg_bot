@@ -16,7 +16,12 @@ def env():
     os.makedirs('/tmp/discord_bot/test')
     os.environ["DATA_PATH"] = '/tmp/discord_bot/test'
 
+    class FakeContext():
+        channel = None
+        author = None
+
     class Fixture():
+        ctx = FakeContext()
         weapon = stuff.Sword(name="test sword", desc="You should never see this", power=25, value=10)
         armor = stuff.Armor(name="test armor", desc="You should never see this", toughness=25, value=10)
 
@@ -43,7 +48,7 @@ def test_start_join_stop(env): # pylint: disable=redefined-outer-name,unused-arg
     """ Tests the start join and stop battle sequences """
     assert env.api.battle.is_stopped
 
-    env.api.battle.new()
+    env.api.battle.new(env.ctx)
     assert env.api.battle.is_joinable
 
     user1 = env.api.character.get('user1')
@@ -65,7 +70,7 @@ def test_start_join_stop(env): # pylint: disable=redefined-outer-name,unused-arg
 #@pytest.mark.skip(reason="implementing")
 def test_attack_defend(env): # pylint: disable=redefined-outer-name,unused-argument
     """ Tests the attacking and defending commands in battle """
-    env.api.battle.new()
+    env.api.battle.new(env.ctx)
 
     user1 = env.api.character.get('user1')
     user2 = env.api.character.get('user2')
@@ -86,8 +91,9 @@ def test_attack_defend(env): # pylint: disable=redefined-outer-name,unused-argum
     assert user1.life.current == user1.life.base
     assert user2.life.current < user2.life.base
 
+    # Reverse the damage
     env.api.battle.submit_action(user1, 'defend')
     env.api.battle.submit_action(user2, 'attack', target=user1)
-    assert user1.life.current == user1.life.base
+    assert user1.life.current < user1.life.base
 
     env.api.battle.stop()

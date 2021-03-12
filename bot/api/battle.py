@@ -31,6 +31,7 @@ class BattleAPI(StateMachine):
     def __init__(self, parent):
         super(BattleAPI, self).__init__()
         self._parent = parent
+        self.ctx = None
 
         self.round = 0
         self.participants = {}
@@ -41,6 +42,12 @@ class BattleAPI(StateMachine):
 
     def on_stop(self):
         """ When the current battle stops """
+        log = self._parent.logger.entry()
+        log.title("Battle stopped")
+        log.desc("The battle was stopped, any progress has been discarded.")
+        log.buffer(self.ctx.channel)
+
+        self.ctx = None
         self.round = 0
         self.participants = {}
         self.actions = {}
@@ -48,18 +55,14 @@ class BattleAPI(StateMachine):
         self.death_order = []
         self.action_log = None
 
-        log = self._parent.logger.entry()
-        log.title("Battle stopped")
-        log.desc("The battle was stopped, any progress has been discarded.")
-        log.buffer()
-
-    def on_new(self):
+    def on_new(self, ctx):
         """ When a new battle is started """
+        self.ctx = ctx
         log = self._parent.logger.entry()
         log.title("Battle Started!")
         log.desc("A new battle has started! Don't forget to join the battle if you'd like to participate")
         log.field(title="Commands", desc="!join\n!battle start\n!battle stop")
-        log.buffer()
+        log.buffer(self.ctx.channel)
 
     def on_join(self, source):
         """ Triggered when a user joins the battle """
@@ -69,14 +72,14 @@ class BattleAPI(StateMachine):
             log.color("warn")
             log.title(f"You're already in the battle, {source.name}")
             log.desc("Just be patient, it will begin soon")
-            log.buffer_pm(source.name)
+            log.buffer(self.ctx.channel)
             return
 
         self.participants[source.name] = source
         log = self._parent.logger.entry()
         log.title(f"{source.name} has entered the battle field!")
         log.desc("TODO: User descriptions")
-        log.buffer()
+        log.buffer(self.ctx.channel)
 
     def on_enter_started(self):
         """ The battle has begun it's first round """
@@ -88,7 +91,7 @@ class BattleAPI(StateMachine):
             log.title("Battle Warning")
             log.desc(f"The battle can't be started until there are 2 or more participants. We currently have {count}.")
             log.field(title="Commands", desc="!join\n!battle stop")
-            log.buffer()
+            log.buffer(self.ctx.channel)
             return
 
         self.new_round()
@@ -98,6 +101,7 @@ class BattleAPI(StateMachine):
         # Calculate the turn order and wait for actions
         self.round += 1
         self.turn_order = [k for k, v in sorted(self.participants.items(), key=lambda x: x[1].speed.current)]
+        self.actions = {}
 
         # Wait for round actions
         self.wait_for_actions()
@@ -107,7 +111,7 @@ class BattleAPI(StateMachine):
         log = self._parent.logger.entry()
         log.title(f"Begin Round {self.round}")
         log.desc("Everyone PM the bot with your actions you'd like to take for the round")
-        log.buffer()
+        log.buffer(self.ctx.channel)
 
         for name in self.participants:
             # Notify the user
@@ -118,7 +122,7 @@ class BattleAPI(StateMachine):
             log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
             # log.field(title="!cast", value="!cast <spell> <target>\nCast a spell you have learned on the target. For more information type !spells", inline=True)
             # log.field(title="!use", value="!use <item> <target>\nUse an item on a target. For more information type !items", inline=True)
-            log.buffer_pm(name)
+            log.buffer(self.ctx.channel)
 
         # Queue up a big log for all turn actions
         self.action_log = self._parent.logger.entry()
@@ -132,7 +136,7 @@ class BattleAPI(StateMachine):
             log.color("warn")
             log.title("You're not in this battle")
             log.desc(f"Dont forget to join next time with the !join command")
-            log.buffer_pm(source.name)
+            log.buffer(self.ctx.channel)
             return
 
         if source.name in self.actions:
@@ -140,7 +144,7 @@ class BattleAPI(StateMachine):
             log.color("warn")
             log.title("Wait for the next round")
             log.desc("You have already used your turn this round. Please wait for the next round before submitting a new action.")
-            log.buffer_pm(source.name)
+            log.buffer(self.ctx.channel)
             return
 
         if source.name in self.death_order:
@@ -148,7 +152,7 @@ class BattleAPI(StateMachine):
             log.color("warn")
             log.title("You're dead!")
             log.desc("Pretty hard to submit a turn action from the grave! Better luck in the next battle.")
-            log.buffer_pm(source.name)
+            log.buffer(self.ctx.channel)
             return
 
         # Ensure the optional target user can be targeted
@@ -158,7 +162,7 @@ class BattleAPI(StateMachine):
             log.title(f"{kwargs['target']} isn't a participant!")
             log.desc("Try targeting someone who's actually taking part!")
             log.field(title="!battle list", desc="List all battle participants")
-            log.buffer_pm(source.name)
+            log.buffer(self.ctx.channel)
             return
 
         if 'target' in kwargs and kwargs['target'].name in self.death_order:
@@ -167,7 +171,7 @@ class BattleAPI(StateMachine):
             log.title(f"{kwargs['target']} is dead!")
             log.desc("Don't beat a dead horse. Try picking a survivor instead...")
             log.field(title="!battle list", desc="List all battle participants")
-            log.buffer_pm(source.name)
+            log.buffer(self.ctx.channel)
             return
 
         if action == "attack":
@@ -191,7 +195,7 @@ class BattleAPI(StateMachine):
             log.desc("I don't know how to do that. Try something that works")
             log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
             log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
-            log.buffer_pm(source.name)
+            log.buffer(self.ctx.channel)
 
         # Run the round actions once they are all submitted
         if len(self.actions) == len(self.participants):
@@ -210,7 +214,7 @@ class BattleAPI(StateMachine):
             action(*args)
 
         # Finally, send the entire round as a single log entry
-        self.action_log.buffer()
+        self.action_log.buffer(self.ctx.channel)
         self.action_log = None
         self.end_round()
 
@@ -220,7 +224,17 @@ class BattleAPI(StateMachine):
         for name in self.participants:
             self.participants[name].defending = False
 
-        self.next_round()
+        # TODO: Winner winner chicken dinner
+        if len(self.death_order) == len(self.participants) - 1:
+            self.stop()
+
+        # TODO: Tie game
+        elif len(self.death_order) == len(self.participants):
+            self.stop()
+
+        # Continue as per normal
+        else:
+            self.next_round()
 
     def _attack(self, source, target):
         """ Source attacks target """
@@ -238,7 +252,7 @@ class BattleAPI(StateMachine):
 
         # Damage is relative to power and physical strength ratio
         # TODO: Misses, Saves, Crits
-        damage = int(power * physical_ratio)
+        damage = max(1, int(power * physical_ratio))
         target.life.current -= damage
 
         # TODO: Custom weapon messages?
