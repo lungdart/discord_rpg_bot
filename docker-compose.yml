@@ -1,0 +1,12 @@
+version: "3.4"
+services:
+  discord_rpg_bot:
+    build: .
+    environment:
+      - DISCORD_TOKEN=REPLACE_ME
+      - DISCORD_GUILD=REPLACE_ME
+      - DISCORD_CHANNEL=REPLACE_ME
+    volumes:
+      - ./data:/data
+      - /PATH/TO/LOG:/log
+    restart: unless-stopped
