@@ -1,6 +1,6 @@
 """ User level battle commands """
 import random
-import threading
+from threading import Timer
 from statemachine import StateMachine, State
 from bot.api.errors import CommandError
 
@@ -40,13 +40,25 @@ class BattleAPI(StateMachine):
         self.death_order = []
         self.action_log = None
 
-    def on_stop(self):
+        # Battle timers
+        self.join_timeout = 60
+        self.action_reminder_timeout = 10
+        self.action_reminder_loops = 6
+        self.timer = None
+
+    def on_stop(self, timeout=False):
         """ When the current battle stops """
+        # Cancel any timeouts
+        if self.timer:
+            self.timer.cancel()
+        self.timer = None
+
+        # Inform the public
         log = self._parent.logger.entry()
         log.title("Battle stopped")
-        log.desc("The battle was stopped, any progress has been discarded.")
         log.buffer(self.ctx.channel)
 
+        # Reset state
         self.ctx = None
         self.round = 0
         self.participants = {}
@@ -57,7 +69,12 @@ class BattleAPI(StateMachine):
 
     def on_new(self, ctx):
         """ When a new battle is started """
+        # Saving the context is important, because that's how we figure out where to send the logging messages
         self.ctx = ctx
+
+        #TODO: Have a timer auto stop if nobody joins
+        # Async HELL
+
         log = self._parent.logger.entry()
         log.title("Battle Started!")
         log.desc("A new battle has started! Don't forget to join the battle if you'd like to participate")
@@ -83,6 +100,11 @@ class BattleAPI(StateMachine):
 
     def on_enter_started(self):
         """ The battle has begun it's first round """
+        # Cancel the join wait timeout
+        if self.timer:
+            self.timer.cancel()
+        self.timer = None
+
         # Need 2 or more participants for a battle
         count = len(self.participants)
         if count < 2:
@@ -266,11 +288,12 @@ class BattleAPI(StateMachine):
     def announce_round_wait(self):
         """ Announce to the channel that the bot is waiting for actions """
         submitted = [x for x in self.actions]
-        waiting_on = '\n'.join([x for x in self.participants if not x in submitted])
+        waiting_on = [x for x in self.participants if not x in submitted]
+        waiting_on_text = '\n'.join(waiting_on)
 
         log = self._parent.logger.entry()
         log.title(f"Waiting for actions from {len(waiting_on)} participants...")
-        log.desc(f"{waiting_on}\n\nUse one of the following commands to submit an action:")
+        log.desc(f"{waiting_on_text}\n\nUse one of the following commands to submit an action:")
         log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
         log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
         # log.field(title="!cast", value="!cast <spell> <target>\nCast a spell you have learned on the target. For more information type !spells", inline=True)

@@ -55,7 +55,9 @@ class Battle(commands.Cog):
         if self.api.battle.is_round_wait:
             source = self.api.character.get(ctx.author.name)
             target = self.api.character.get(target_name)
+
             self.api.battle.submit_action(source, 'attack', target=target)
+            await ctx.message.add_reaction(u'👍')
         else:
             log = self.api.logger.entry()
             log.color("warn")
@@ -71,7 +73,9 @@ class Battle(commands.Cog):
         """ Defend for the round while in battle """
         if self.api.battle.is_round_wait:
             source = self.api.character.get(ctx.author.name)
+
             self.api.battle.submit_action(source, 'defend')
+            await ctx.message.add_reaction(u'👍')
         else:
             log = self.api.logger.entry()
             log.color("warn")

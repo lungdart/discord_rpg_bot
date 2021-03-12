@@ -1,6 +1,5 @@
 """ Hooks the API into discord commands """
 import os
-
 import discord
 from discord.ext import commands
 import bot.components.logging
@@ -34,8 +33,8 @@ class BotService():
 
     async def on_ready(self):
         """ Triggers when the bot is ready """
+        print("Connected!")
+
         # Create new characters for all members who don't have one
         all_members = [x.name for x in self.client.get_all_members()]
         self.api.character.create_missing(all_members)
-
-        print("Connected!")
