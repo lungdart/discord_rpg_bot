@@ -108,25 +108,12 @@ class BattleAPI(StateMachine):
 
     def on_wait_for_actions(self):
         """ Inform the channel and each participant they are waiting for turn inputs """
-        log = self._parent.logger.entry()
-        log.title(f"Begin Round {self.round}")
-        log.desc("Everyone PM the bot with your actions you'd like to take for the round")
-        log.buffer(self.ctx.channel)
-
-        for name in self.participants:
-            # Notify the user
-            log = self._parent.logger.entry()
-            log.title(f"Waiting for round {self.round} action")
-            log.desc("Remember to type your action in here. Once all actions are submitted the round results will be tallied and printed log in the channel")
-            log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
-            log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
-            # log.field(title="!cast", value="!cast <spell> <target>\nCast a spell you have learned on the target. For more information type !spells", inline=True)
-            # log.field(title="!use", value="!use <item> <target>\nUse an item on a target. For more information type !items", inline=True)
-            log.buffer(self.ctx.channel)
-
-        # Queue up a big log for all turn actions
+        # Begin a round log
         self.action_log = self._parent.logger.entry()
         self.action_log.title(f"Round {self.round} results")
+
+        # Continually bug the channel for actions
+        self.announce_round_wait()
 
     def on_submit_action(self, source, action, **kwargs):
         """ Somebody submitted an action """
@@ -275,3 +262,17 @@ class BattleAPI(StateMachine):
             title=f"{source.name} defends for the turn",
             desc=f"{source.name} takes half damage for the rest of the round"
         )
+
+    def announce_round_wait(self):
+        """ Announce to the channel that the bot is waiting for actions """
+        submitted = [x for x in self.actions]
+        waiting_on = '\n'.join([x for x in self.participants if not x in submitted])
+
+        log = self._parent.logger.entry()
+        log.title(f"Waiting for actions from {len(waiting_on)} participants...")
+        log.desc(f"{waiting_on}\n\nUse one of the following commands to submit an action:")
+        log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
+        log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
+        # log.field(title="!cast", value="!cast <spell> <target>\nCast a spell you have learned on the target. For more information type !spells", inline=True)
+        # log.field(title="!use", value="!use <item> <target>\nUse an item on a target. For more information type !items", inline=True)
+        log.buffer(self.ctx.channel)
