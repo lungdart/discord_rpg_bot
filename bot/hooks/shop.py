@@ -28,6 +28,7 @@ class Shop(commands.Cog):
         out.field('Spells', f'{spells}')
         out.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')
 
     @commands.command()
     @log_all
@@ -50,6 +51,7 @@ class Shop(commands.Cog):
         out.buffer(ctx.author)
 
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')
 
     @commands.command()
     @log_all
@@ -75,6 +77,7 @@ class Shop(commands.Cog):
         out.desc(f"You have {cstats['gold']} gold remaining...")
         out.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')
 
     @commands.command()
     @log_all
@@ -100,3 +103,4 @@ class Shop(commands.Cog):
         out.desc(f"You now have {cstats['gold']} gold!")
         out.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')

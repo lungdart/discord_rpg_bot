@@ -64,11 +64,6 @@ class DiscordLogger():
             self.ready = True
             self.target = target
 
-        def buffer_pm(self, username):
-            """ Marks the embed as ready to send as a PM to the given username """
-            self.username = username
-            self.ready = True
-
     def __init__(self):
         self.buffer = []
         self.timer = None
@@ -85,7 +80,10 @@ class DiscordLogger():
         for entry in list(self.buffer):
             if entry.ready:
                 await entry.target.send(embed=entry.embed)
-                self.buffer.remove(entry)
+                try:
+                    self.buffer.remove(entry)
+                except ValueError:
+                    print("Attempted to remove a non existent embed entry in the logger. It may have been sent out twice!")
                 continue
 
 def log_all(func):
@@ -109,8 +107,9 @@ def log_all(func):
             out.color('error')
             out.title('Command Error')
             out.desc(str(error))
-            out.buffer_pm(ctx.channel)
+            out.buffer(ctx.author)
             await self.api.logger.send_buffer()
+            await ctx.message.add_reaction(u'❌')
             return
         except Exception as error:
             out = self.api.logger.entry()
@@ -119,5 +118,6 @@ def log_all(func):
             out.desc(str(error))
             out.buffer(ctx.channel)
             await self.api.logger.send_buffer()
+            await ctx.message.add_reaction(u'❌')
             raise error
     return wrapper

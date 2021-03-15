@@ -1,7 +1,7 @@
 """ Hooks the API into discord commands """
 import os
 import discord
-from discord.ext import commands
+from discord.ext import commands, timers
 import bot.components.logging
 import bot.hooks
 import bot.api
@@ -9,10 +9,13 @@ import bot.api
 class BotService():
     """ Discord bot service """
     def __init__(self):
-        # Initialize the key parts
+        # Discord components
         self.client = commands.Bot(command_prefix='!', intents=discord.Intents.all())
         self.logger = bot.components.logging.DiscordLogger()
-        self.api = bot.api.API(self.logger)
+        self.timer_manager = timers.TimerManager(self.client)
+
+        # API instance to handle discord calls and logic
+        self.api = bot.api.API(self.logger, self.timer_manager)
 
         # Connect hooks for commands
         self.client.add_cog(bot.hooks.Admin(self.api))

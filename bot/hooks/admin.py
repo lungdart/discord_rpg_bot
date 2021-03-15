@@ -13,10 +13,13 @@ class Admin(commands.Cog):
         """ Manage a battle instance """
         # No arguments indicates starting a battle
         if not command:
+            await ctx.message.add_reaction(u'👍')
             self.api.battle.new(ctx)
         elif command == "start":
+            await ctx.message.add_reaction(u'👍')
             self.api.battle.start()
         elif command == "stop":
+            await ctx.message.add_reaction(u'👍')
             self.api.battle.stop()
 
         # Bad command
@@ -33,7 +36,8 @@ class Admin(commands.Cog):
                     **!battle *start* **: Starts a battle if there are enough participants
                     **!battle *stop* **: Stops a battle at any point. All progress is lost
                 """)
-            out.buffer(ctx.channel)
+            out.buffer(ctx.author)
+            await ctx.message.add_reaction(u'❌')
 
         # Send everything from the buffer
         await self.api.logger.send_buffer()

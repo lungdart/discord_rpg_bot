@@ -16,6 +16,7 @@ class Activities(commands.Cog):
         log.title("Command not yet implemented")
         log.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'❌')
 
     @commands.command()
     @log_all
@@ -26,6 +27,7 @@ class Activities(commands.Cog):
         log.title("Command not yet implemented")
         log.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'❌')
 
     @commands.command()
     @log_all
@@ -36,3 +38,4 @@ class Activities(commands.Cog):
         log.title("Command not yet implemented")
         log.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'❌')

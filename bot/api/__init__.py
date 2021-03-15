@@ -5,8 +5,13 @@ import bot.api.shop
 import bot.api.errors
 
 class API():
-    def __init__(self, logger):
+    """ Logic handler """
+    def __init__(self, logger, timer_manager=None):
+        # Discord API stuff
         self.logger = logger
+        self.timer_manager = timer_manager
+
+        # Bot api stuff
         self.battle = bot.api.battle.BattleAPI(self)
         self.character = bot.api.character.CharacterAPI(self)
         self.shop = bot.api.shop.ShopAPI(self)

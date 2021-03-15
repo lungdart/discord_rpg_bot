@@ -38,6 +38,7 @@ class ManageCharacter(commands.Cog):
         out.field("Power/Toughness", power_tough)
         out.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')
 
     @commands.command()
     @log_all
@@ -65,6 +66,7 @@ class ManageCharacter(commands.Cog):
         out.field(title="Inventory", desc=stuff)
         out.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')
 
     @commands.command()
     @log_all
@@ -79,6 +81,7 @@ class ManageCharacter(commands.Cog):
         out.title(f"You equipped {name}")
         out.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')
 
     @commands.command()
     @log_all
@@ -91,3 +94,4 @@ class ManageCharacter(commands.Cog):
         out.title(f"Your {slot} is now empty")
         out.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')

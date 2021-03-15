@@ -1,6 +1,6 @@
 """ User level battle commands """
 import random
-from threading import Timer
+from datetime import datetime, timedelta
 from statemachine import StateMachine, State
 from bot.api.errors import CommandError
 
@@ -41,18 +41,12 @@ class BattleAPI(StateMachine):
         self.action_log = None
 
         # Battle timers
-        self.join_timeout = 60
-        self.action_reminder_timeout = 10
-        self.action_reminder_loops = 6
-        self.timer = None
+        self.join_timeout_sec = 120
+        self.action_reminder_timeout = 30 # Will remind 3 times before forcing all defends on the final 4th call
+        self.action_reminder_loops = 0
 
     def on_stop(self, timeout=False):
         """ When the current battle stops """
-        # Cancel any timeouts
-        if self.timer:
-            self.timer.cancel()
-        self.timer = None
-
         # Inform the public
         log = self._parent.logger.entry()
         log.title("Battle stopped")
@@ -72,8 +66,8 @@ class BattleAPI(StateMachine):
         # Saving the context is important, because that's how we figure out where to send the logging messages
         self.ctx = ctx
 
-        #TODO: Have a timer auto stop if nobody joins
-        # Async HELL
+        # This timer will auto start/stop the battle after timeout depending on participant count
+        self._parent.timer_manager.create_timer("join_timeout", self.join_timeout_sec, args=(ctx,))
 
         log = self._parent.logger.entry()
         log.title("Battle Started!")
@@ -100,11 +94,6 @@ class BattleAPI(StateMachine):
 
     def on_enter_started(self):
         """ The battle has begun it's first round """
-        # Cancel the join wait timeout
-        if self.timer:
-            self.timer.cancel()
-        self.timer = None
-
         # Need 2 or more participants for a battle
         count = len(self.participants)
         if count < 2:
