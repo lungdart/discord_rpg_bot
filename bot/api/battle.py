@@ -45,7 +45,12 @@ class BattleAPI(StateMachine):
         self.action_reminder_timeout = 30 # Will remind 3 times before forcing all defends on the final 4th call
         self.action_reminder_loops = 0
 
-    def on_stop(self, timeout=False):
+    @property
+    def unsubmitted_participants(self):
+        """ Get the list of participants who haven't submitted an action for the round """
+        return [x for x in self.turn_order if not x in self.actions]
+
+    def on_stop(self):
         """ When the current battle stops """
         # Inform the public
         log = self._parent.logger.entry()
@@ -105,6 +110,7 @@ class BattleAPI(StateMachine):
             log.buffer(self.ctx.channel)
             return
 
+        self._parent.timer_manager.clear() # Ensure the join timeout is canceled
         self.new_round()
 
     def on_enter_round_started(self):
@@ -115,6 +121,7 @@ class BattleAPI(StateMachine):
         self.actions = {}
 
         # Wait for round actions
+        self._parent.timer_manager.create_timer("round_timeout", self.action_reminder_timeout, args=(self.ctx,))
         self.wait_for_actions()
 
     def on_wait_for_actions(self):
@@ -201,6 +208,9 @@ class BattleAPI(StateMachine):
 
     def on_enter_round_running(self):
         """ Triggers when all actions are submitted and the round is run """
+         # Ensure the round action reminder is canceled
+        self._parent.timer_manager.clear()
+
         # Run the actions in turn order for the round
         for name in self.turn_order:
             # Dead users skip over their turns
@@ -273,6 +283,12 @@ class BattleAPI(StateMachine):
             title=f"{source.name} defends for the turn",
             desc=f"{source.name} takes half damage for the rest of the round"
         )
+
+    def _defend_all(self):
+        """ Everyone who has no action, will be forced to defend """
+        for name in self.unsubmitted_participants:
+            source = self.participants[name]
+            self._defend(source)
 
     def announce_round_wait(self):
         """ Announce to the channel that the bot is waiting for actions """

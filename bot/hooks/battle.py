@@ -161,7 +161,7 @@ class Battle(commands.Cog):
             log.title("Round timed out")
             log.desc(f"{count} participants will be forced to defend for the turn")
             log.buffer(ctx.channel)
-            # TODO: Force defends
+            self.api.battle._defend_all()
             await self.api.logger.send_buffer()
             return
 
@@ -169,8 +169,11 @@ class Battle(commands.Cog):
         log.title("Waiting for participants")
         desc = f"The following {count} participants still haven't submitted an action for the round.\n"
         desc += "If no actions are submitted they will be forced to defend.\n\n"
-        remaining = [x for x in self.api.battle.participants if not x in self.api.battle.actions]
-        for participant in remaining:
+        for participant in self.battle.unsubmitted_participants:
             desc += f"**{participant}**"
         log.desc(desc)
         log.buffer(ctx.channel)
+        await self.api.logger.send_buffer()
+
+        # Restart the timer
+        self.api.timer_manager.create_timer("round_timeout", self.action_reminder_timeout, args=(self.ctx,))
