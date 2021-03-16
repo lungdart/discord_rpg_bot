@@ -23,7 +23,7 @@ def env():
         spell = stuff.Spell(name="test spell", desc="You should never see this", value=10)
 
         def __init__(self):
-            self.api = bot.api.API(logging.NullLogger())
+            self.api = bot.api.API()
             self.api.character.create("User")
 
             self.api.shop.create(**self.weapon.__dict__)

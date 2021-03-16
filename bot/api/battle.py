@@ -76,7 +76,7 @@ class BattleAPI(StateMachine):
         self.ctx = ctx
 
         # This timer will auto start/stop the battle after timeout depending on participant count
-        self.timer = Timer(self._parent.client, "join_timeout", self.join_timeout_sec, args=(ctx,))
+        self.timer = self._parent.timer_factory("join_timeout", self.join_timeout_sec, args=(ctx,))
         self.timer.start()
 
         log = self._parent.logger.entry()
@@ -126,7 +126,7 @@ class BattleAPI(StateMachine):
         self.actions = {}
 
         # Wait for round actions
-        self.timer = Timer(self._parent.client, "round_timeout", self.action_reminder_timeout, args=(self.ctx,))
+        self.timer = self._parent.timer_factory("round_timeout", self.action_reminder_timeout, args=(self.ctx,))
         self.timer.start()
         self.wait_for_actions()
 

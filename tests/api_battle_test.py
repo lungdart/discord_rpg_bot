@@ -1,7 +1,7 @@
 import os
 import shutil
 import pytest
-from bot.components import stuff, logging
+from bot.components import stuff, logging, timer
 import bot.api
 
 ### FIXTURES ###
@@ -20,13 +20,14 @@ def env():
         channel = None
         author = None
 
+
     class Fixture():
         ctx = FakeContext()
         weapon = stuff.Sword(name="test sword", desc="You should never see this", power=25, value=10)
         armor = stuff.Armor(name="test armor", desc="You should never see this", toughness=25, value=10)
 
         def __init__(self):
-            self.api = bot.api.API(logging.NullLogger())
+            self.api = bot.api.API()
             self.api.character.create("User1")
             self.api.character.create("User2")
 

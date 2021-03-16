@@ -21,8 +21,7 @@ def env():
         accessory = stuff.Accessory(name="test accessory", desc="You should never see this", value=10)
 
         def __init__(self):
-            self.logger = logging.NullLogger()
-            self.api = bot.api.API(self.logger)
+            self.api = bot.api.API()
             self.api.character.create("User")
 
     yield Fixture()

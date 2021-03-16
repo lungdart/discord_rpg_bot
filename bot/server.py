@@ -3,6 +3,7 @@ import os
 import discord
 from discord.ext import commands
 import bot.components.logging
+import bot.components.timer
 import bot.hooks
 import bot.api
 
@@ -14,7 +15,7 @@ class BotService():
         self.logger = bot.components.logging.DiscordLogger()
 
         # API instance to handle discord calls and logic
-        self.api = bot.api.API(self)
+        self.api = bot.api.API(self.client, self.logger)
 
         # Connect hooks for commands
         self.client.add_cog(bot.hooks.Admin(self.api))

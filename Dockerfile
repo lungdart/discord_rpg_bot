@@ -1,5 +1,5 @@
 FROM python:3
-LABEL version="0.0.2-alpha"
+LABEL version="0.0.3-alpha"
 LABEL description="RPG discord bot"
 
 ENV DATA_PATH="/data"

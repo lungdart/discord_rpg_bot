@@ -1,5 +1,16 @@
 import asyncio
 
+class NullTimer():
+    """ Empty timer class for mocking """
+    def __init__(self, *args, **kwargs):
+        pass
+    def start(self):
+        pass
+    def cancel(self):
+        pass
+    def is_running(self):
+        return False
+
 class AsyncEventTimer():
     """ Timer that fires a discord event asynchronously on timeout """
     def __init__(self, client, name, timeout, args=None, kwargs=None):
@@ -8,16 +19,11 @@ class AsyncEventTimer():
         self.timeout = timeout
         self.args    = args or tuple()
         self.kwargs  = kwargs or {}
-
         self._task   = None
-        print(f"Timer {self.name} initialized")
 
     def start(self):
         """ Start the timer """
         self._task = self.client.loop.create_task(self._run())
-
-        # Return self to allow chaining start on construction
-        return self
 
     def cancel(self):
         """ Cancel a timer that hasn't triggered yet """
@@ -34,3 +40,12 @@ class AsyncEventTimer():
         """ asynchronous call that is run when the timeout occurs """
         await asyncio.sleep(self.timeout)
         self.client.dispatch(self.name, *self.args, **self.kwargs)
+
+class TimerFactory():
+    def __init__(self, timer_class, client=None):
+        self.timer_class = timer_class
+        self.client = client
+
+    def __call__(self, name, timeout, args=None, kwargs=None):
+        """ Reconfigure timer instance for a new timing event """
+        return self.timer_class(self.client, name, timeout, args, kwargs)
