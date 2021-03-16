@@ -2,6 +2,7 @@
 import random
 from datetime import datetime, timedelta
 from statemachine import StateMachine, State
+from bot.components.timer import AsyncEventTimer as Timer
 from bot.api.errors import CommandError
 
 class BattleAPI(StateMachine):
@@ -41,9 +42,12 @@ class BattleAPI(StateMachine):
         self.action_log = None
 
         # Battle timers
+        self.timer = None
         self.join_timeout_sec = 120
-        self.action_reminder_timeout = 30 # Will remind 3 times before forcing all defends on the final 4th call
-        self.action_reminder_loops = 0
+
+        # Will remind 3 times before forcing all defends on the final 4th call
+        self.action_reminder_timeout = 30
+        self.action_reminder_loop = 0
 
     @property
     def unsubmitted_participants(self):
@@ -72,7 +76,8 @@ class BattleAPI(StateMachine):
         self.ctx = ctx
 
         # This timer will auto start/stop the battle after timeout depending on participant count
-        self._parent.timer_manager.create_timer("join_timeout", self.join_timeout_sec, args=(ctx,))
+        self.timer = Timer(self._parent.client, "join_timeout", self.join_timeout_sec, args=(ctx,))
+        self.timer.start()
 
         log = self._parent.logger.entry()
         log.title("Battle Started!")
@@ -110,7 +115,7 @@ class BattleAPI(StateMachine):
             log.buffer(self.ctx.channel)
             return
 
-        self._parent.timer_manager.clear() # Ensure the join timeout is canceled
+        self.timer.cancel() # Ensure the join timeout is canceled
         self.new_round()
 
     def on_enter_round_started(self):
@@ -121,7 +126,8 @@ class BattleAPI(StateMachine):
         self.actions = {}
 
         # Wait for round actions
-        self._parent.timer_manager.create_timer("round_timeout", self.action_reminder_timeout, args=(self.ctx,))
+        self.timer = Timer(self._parent.client, "round_timeout", self.action_reminder_timeout, args=(self.ctx,))
+        self.timer.start()
         self.wait_for_actions()
 
     def on_wait_for_actions(self):
@@ -140,7 +146,7 @@ class BattleAPI(StateMachine):
             log = self._parent.logger.entry()
             log.color("warn")
             log.title("You're not in this battle")
-            log.desc(f"Dont forget to join next time with the !join command")
+            log.desc(f"Don't forget to join next time with the !join command")
             log.buffer(self.ctx.channel)
             return
 
@@ -208,8 +214,9 @@ class BattleAPI(StateMachine):
 
     def on_enter_round_running(self):
         """ Triggers when all actions are submitted and the round is run """
-         # Ensure the round action reminder is canceled
-        self._parent.timer_manager.clear()
+        # Ensure the round action reminder is canceled
+        if self.timer and self.timer.is_running():
+            self.timer.cancel()
 
         # Run the actions in turn order for the round
         for name in self.turn_order:
@@ -288,7 +295,7 @@ class BattleAPI(StateMachine):
         """ Everyone who has no action, will be forced to defend """
         for name in self.unsubmitted_participants:
             source = self.participants[name]
-            self._defend(source)
+            self.submit_action(source, "defend")
 
     def announce_round_wait(self):
         """ Announce to the channel that the bot is waiting for actions """

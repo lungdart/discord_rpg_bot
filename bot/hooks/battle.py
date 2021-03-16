@@ -1,6 +1,7 @@
 """ Battle commands """
 from discord.ext import commands
 from bot.components.logging import log_all
+from bot.components.timer import AsyncEventTimer as Timer
 
 class Battle(commands.Cog):
     """ Battle commands """
@@ -150,7 +151,7 @@ class Battle(commands.Cog):
 
     @commands.Cog.listener()
     @log_all
-    async def round_timeout(self, ctx):
+    async def on_round_timeout(self, ctx):
         """ Remind users to give battle commands, force actions after a set amount of reminders """
         # After 3 reminders, the 4th reminder will force all defend actions
         self.api.battle.action_reminder_loop += 1
@@ -169,11 +170,12 @@ class Battle(commands.Cog):
         log.title("Waiting for participants")
         desc = f"The following {count} participants still haven't submitted an action for the round.\n"
         desc += "If no actions are submitted they will be forced to defend.\n\n"
-        for participant in self.battle.unsubmitted_participants:
+        for participant in self.api.battle.unsubmitted_participants:
             desc += f"**{participant}**"
         log.desc(desc)
         log.buffer(ctx.channel)
         await self.api.logger.send_buffer()
 
         # Restart the timer
-        self.api.timer_manager.create_timer("round_timeout", self.action_reminder_timeout, args=(self.ctx,))
+        self.api.battle.timer = Timer(self.api.client, "round_timeout", self.api.battle.action_reminder_timeout, args=(ctx,))
+        self.api.battle.timer.start()
