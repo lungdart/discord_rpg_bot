@@ -155,27 +155,32 @@ class Battle(commands.Cog):
         """ Remind users to give battle commands, force actions after a set amount of reminders """
         # After 3 reminders, the 4th reminder will force all defend actions
         self.api.battle.action_reminder_loop += 1
-        count = len(self.api.battle.participants)
+        count = len(self.api.battle.unsubmitted_participants)
         log = self.api.logger.entry()
-        if self.api.battle.action_reminder_loop == 4:
+        if self.api.battle.action_reminder_loop >= 4:
+            # Make everyone defend
+            self.api.battle._defend_all()
+
+            # Report the issue
             log.color("error")
             log.title("Round timed out")
             log.desc(f"{count} participants will be forced to defend for the turn")
             log.buffer(ctx.channel)
-            self.api.battle._defend_all()
             await self.api.logger.send_buffer()
+
+            # Reset the reminder
+            self.api.battle.action_reminder_loop = 0
             return
 
         log.color("warn")
         log.title("Waiting for participants")
         desc = f"The following {count} participants still haven't submitted an action for the round.\n"
         desc += "If no actions are submitted they will be forced to defend.\n\n"
-        for participant in self.api.battle.unsubmitted_participants:
-            desc += f"**{participant}**"
+        desc += ', '.join([f"**{x}**" for x in self.api.battle.unsubmitted_participants])
         log.desc(desc)
         log.buffer(ctx.channel)
         await self.api.logger.send_buffer()
 
         # Restart the timer
-        self.api.battle.timer = Timer(self.api.client, "round_timeout", self.api.battle.action_reminder_timeout, args=(ctx,))
+        self.api.battle.timer = self.api.timer_factory("round_timeout", self.api.battle.action_reminder_timeout, args=(ctx,))
         self.api.battle.timer.start()

@@ -179,6 +179,8 @@ class CharacterAPI():
                    `!restart`""")
             log.buffer(ctx.author)
 
+        self.save(username)
+
     def give_gold(self, username, gold):
         """ Give a character gold by username """
         try:
@@ -190,6 +192,7 @@ class CharacterAPI():
 
         target = self.get(username)
         target.earn(gold)
+        self.save(username)
 
     def spend_points(self, username, stat_name, points=1):
         """ Spend stat points for a given username """
@@ -209,8 +212,10 @@ class CharacterAPI():
             raise CommandError(f"You can't spend more points than you have! ({target.points} points)")
 
         target.upgrade(stat_name_lower, points)
+        self.save(username)
 
     def restart_points(self, username):
         """ Nullifies all spent stat points and puts them back into the pool to start over """
         target = self.get(username)
         target.restart()
+        self.save(username)

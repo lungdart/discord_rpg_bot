@@ -101,12 +101,12 @@ class ManageCharacter(commands.Cog):
     @log_all
     async def upgrade(self, ctx, stat_name, points=1):
         """ Upgrade a core stat"""
-        self.api.character.spend_points(ctx.author, stat_name, points)
+        self.api.character.spend_points(ctx.author.name, stat_name, points)
         await ctx.message.add_reaction(u'👍')
 
     @commands.command()
     @log_all
     async def restart(self, ctx):
         """ Upgrade a core stat"""
-        self.api.character.restart(ctx.author)
+        self.api.character.restart(ctx.author.name)
         await ctx.message.add_reaction(u'👍')

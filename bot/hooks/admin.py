@@ -13,14 +13,14 @@ class Admin(commands.Cog):
         """ Manage a battle instance """
         # No arguments indicates starting a battle
         if not command:
-            await ctx.message.add_reaction(u'👍')
             self.api.battle.new(ctx)
+            await ctx.message.add_reaction(u'👍')
         elif command == "start":
-            await ctx.message.add_reaction(u'👍')
             self.api.battle.start()
-        elif command == "stop":
             await ctx.message.add_reaction(u'👍')
+        elif command == "stop":
             self.api.battle.stop()
+            await ctx.message.add_reaction(u'👍')
 
         # Bad command
         else:

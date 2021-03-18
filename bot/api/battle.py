@@ -1,8 +1,6 @@
 """ User level battle commands """
 import random
-from datetime import datetime, timedelta
 from statemachine import StateMachine, State
-from bot.components.timer import AsyncEventTimer as Timer
 from bot.api.errors import CommandError
 
 class BattleAPI(StateMachine):
@@ -13,7 +11,7 @@ class BattleAPI(StateMachine):
     finished = State("Battle Finished")
 
     round_started = State('Round started')
-    round_wait = State('Waiting on input for round')
+    round_wait = State('Round waiting on actions')
     round_running = State('Performing round')
     round_ended = State('Round ended')
 
@@ -30,7 +28,7 @@ class BattleAPI(StateMachine):
     next_round = round_ended.to(round_started)
     finish = round_ended.to(finished)
 
-    stop = stopped.from_(joinable, started, round_started, round_wait, round_running, round_ended, finished)
+    stop = stopped.from_(joinable, started, finished, round_started, round_wait, round_running, round_ended)
 
     def __init__(self, parent):
         super(BattleAPI, self).__init__()
@@ -61,6 +59,7 @@ class BattleAPI(StateMachine):
         """ When the current battle stops """
         # Inform the public
         log = self._parent.logger.entry()
+        log.color("warn")
         log.title("Battle stopped")
         log.buffer(self.ctx.channel)
 
@@ -211,7 +210,8 @@ class BattleAPI(StateMachine):
             log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
             log.buffer(self.ctx.channel)
 
-        # Run the round actions once they are all submitted
+    def on_enter_round_wait(self):
+        """ Automatically run the round when ready """
         if len(self.actions) == len(self.participants):
             self.run_round()
 
@@ -245,17 +245,19 @@ class BattleAPI(StateMachine):
         # Win conditions (1 winner, and a tie game)
         if len(self.death_order) == len(self.participants) - 1:
             self.finish()
-        elif len(self.death_order) == len(self.participants):
-            self.finish(draw=True)
+            return
 
-        # Continue as per normal
-        else:
-            self.next_round()
+        if len(self.death_order) == len(self.participants):
+            self.finish(draw=True)
+            return
+
+        self.next_round()
 
     def on_finish(self, draw=False):
         """ Battle finished """
         # Winner order is the reverse death order
-        winners = self.death_order[::-1]
+        alive = [x for x in self.participants if x not in self.death_order]
+        winners = alive + self.death_order[::-1]
         prizes = {}
 
         # Generate standard prizes
@@ -264,6 +266,7 @@ class BattleAPI(StateMachine):
 
         # Announce winner(s)
         log = self._parent.logger.entry()
+        log.color("success")
         if draw:
             log.title("Draw game!")
             log.field("First place", f"{winners[0]}, {winners[1]}")
@@ -274,7 +277,7 @@ class BattleAPI(StateMachine):
         else:
             # Announce and give additional prizes to the first place winners
             log.title("We have a winner!")
-            log.field("First place", f"{winners[0]}")
+            log.field("First place", f"{winners[0]}", inline=True)
             prizes[winners[0]]['gold'] += 500
             second_idx = 1
             third_idx = 2
@@ -282,13 +285,13 @@ class BattleAPI(StateMachine):
         # Second place
         if len(winners) > second_idx:
             second = winners[second_idx]
-            log.field("Second place", f"{second}")
+            log.field("Second place", f"{second}", inline=True)
             prizes[second]['gold'] += 300
 
         # Third place
         if len(winners) > third_idx:
             third = winners[third_idx]
-            log.field("Third place", f"{third}")
+            log.field("Third place", f"{third}", inline=True)
             prizes[third]['gold'] += 200
 
         # Biggest loser
@@ -303,12 +306,27 @@ class BattleAPI(StateMachine):
             gold = prizes[name]['gold']
             experience = prizes[name]['gold']
             self._parent.character.give_gold(name, gold)
-            self._parent.character.give_xp(name, experience)
+            self._parent.character.give_xp(self.ctx, name, experience)
 
     def on_enter_finished(self):
         """ When you enter the finished state """
         # Since we do everything when the call is made to change states, we can move directly into stop
         self.stop()
+
+    def announce_round_wait(self):
+        """ Announce to the channel that the bot is waiting for actions """
+        submitted = [x for x in self.actions]
+        waiting_on = [x for x in self.participants if not x in submitted]
+        waiting_on_text = '\n'.join(waiting_on)
+
+        log = self._parent.logger.entry()
+        log.title(f"Waiting for actions from {len(waiting_on)} participants...")
+        log.desc(f"{waiting_on_text}\n\nUse one of the following commands to submit an action:")
+        log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
+        log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
+        # log.field(title="!cast", value="!cast <spell> <target>\nCast a spell you have learned on the target. For more information type !spells", inline=True)
+        # log.field(title="!use", value="!use <item> <target>\nUse an item on a target. For more information type !items", inline=True)
+        log.buffer(self.ctx.channel)
 
     def _attack(self, source, target):
         """ Source attacks target """
@@ -355,18 +373,3 @@ class BattleAPI(StateMachine):
         for name in self.unsubmitted_participants:
             source = self.participants[name]
             self.submit_action(source, "defend")
-
-    def announce_round_wait(self):
-        """ Announce to the channel that the bot is waiting for actions """
-        submitted = [x for x in self.actions]
-        waiting_on = [x for x in self.participants if not x in submitted]
-        waiting_on_text = '\n'.join(waiting_on)
-
-        log = self._parent.logger.entry()
-        log.title(f"Waiting for actions from {len(waiting_on)} participants...")
-        log.desc(f"{waiting_on_text}\n\nUse one of the following commands to submit an action:")
-        log.field(title="!attack", desc="!attack <target>\nPhysically attack the target", inline=True)
-        log.field(title="!defend", desc="!defend\nDefending reduces any damage by half", inline=True)
-        # log.field(title="!cast", value="!cast <spell> <target>\nCast a spell you have learned on the target. For more information type !spells", inline=True)
-        # log.field(title="!use", value="!use <item> <target>\nUse an item on a target. For more information type !items", inline=True)
-        log.buffer(self.ctx.channel)
