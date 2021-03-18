@@ -1,0 +1,6 @@
+{
+    "name": "cloth",
+    "desc": "Cloth robes that don't protect from much, but keep you from being exposed",
+    "toughness": 5,
+    "value": 25
+}

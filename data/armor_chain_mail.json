@@ -1,0 +1,6 @@
+{
+    "name": "chain mail",
+    "desc": "A series of linked copper chains that will protect from slashing and most stabbing.",
+    "toughness": 20,
+    "value": 500
+}

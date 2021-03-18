@@ -1,0 +1,6 @@
+{
+    "name": "plate",
+    "desc": "Custom fitted armor made from steel plates. This armor will protect against most things, but doesn't do much to soften blows.",
+    "toughness": 25,
+    "value": 1055
+}

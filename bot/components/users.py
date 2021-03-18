@@ -29,9 +29,7 @@ class User():
         self.accessory = None
         self.spells = []
         self.inventory = []
-        # TODO: Stop debugging gold levels
-        # self._gold = 0
-        self._gold = 1000000
+        self._gold = 100 # Starting gold
 
         # Battle statuses
         self.defending = False
