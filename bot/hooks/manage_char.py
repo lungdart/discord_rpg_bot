@@ -18,7 +18,8 @@ class ManageCharacter(commands.Cog):
 
         level = f"""
         **Level**: {cstats['level']}
-        **Experience**: {cstats['experience']}"""
+        **Experience**: {cstats['experience']}
+        **Unspent Points**: {cstats['points']}"""
         derived = f"""
         **Life**: {cstats['current_life']}/{cstats['base_life']}
         **Mana**: {cstats['current_mana']}/{cstats['base_mana']}
@@ -94,4 +95,18 @@ class ManageCharacter(commands.Cog):
         out.title(f"Your {slot} is now empty")
         out.buffer(ctx.author)
         await self.api.logger.send_buffer()
+        await ctx.message.add_reaction(u'👍')
+
+    @commands.command()
+    @log_all
+    async def upgrade(self, ctx, stat_name, points=1):
+        """ Upgrade a core stat"""
+        self.api.character.spend_points(ctx.author, stat_name, points)
+        await ctx.message.add_reaction(u'👍')
+
+    @commands.command()
+    @log_all
+    async def restart(self, ctx):
+        """ Upgrade a core stat"""
+        self.api.character.restart(ctx.author)
         await ctx.message.add_reaction(u'👍')

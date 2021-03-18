@@ -87,6 +87,7 @@ def test_stats(env): # pylint: disable=redefined-outer-name,unused-argument
     assert stats['username'] == user.name
     assert stats['level'] == user.level
     assert stats['experience'] == user.experience
+    assert stats['points'] == user.points
     assert stats['base_life'] == user.life.base
     assert stats['current_life'] == user.life.current
     assert stats['base_mana'] == user.mana.base

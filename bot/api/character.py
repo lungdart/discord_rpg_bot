@@ -100,6 +100,7 @@ class CharacterAPI():
             'username'       : target.name,
             'level'          : target.level,
             'experience'     : target.experience,
+            'points'         : target.points,
             'base_life'      : target.life.base,
             'current_life'   : target.life.current,
             'base_mana'      : target.mana.base,
