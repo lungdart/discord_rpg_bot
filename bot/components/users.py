@@ -13,6 +13,7 @@ class User():
         self.name = name
         self.level = 1
         self.experience = 0
+        self.points = 0
 
         # Stats
         self.body = None
@@ -28,7 +29,9 @@ class User():
         self.accessory = None
         self.spells = []
         self.inventory = []
-        self._gold = 0
+        # TODO: Stop debugging gold levels
+        # self._gold = 0
+        self._gold = 1000000
 
         # Battle statuses
         self.defending = False
@@ -39,9 +42,9 @@ class User():
         this = cls(name)
 
         # Core stats
-        this.body = CoreStat(1)
-        this.mind = CoreStat(1)
-        this.agility = CoreStat(1)
+        this.body = CoreStat()
+        this.mind = CoreStat()
+        this.agility = CoreStat()
         this._derive_stats()
 
         return this
@@ -55,10 +58,11 @@ class User():
         this = cls(data["name"])
         this.level = data["level"]
         this.experience = data["experience"]
+        this.points = data["points"]
 
-        this.body = CoreStat(data["body"])
-        this.mind = CoreStat(data["mind"])
-        this.agility = CoreStat(data["agility"])
+        this.body = CoreStat(data["body_points"])
+        this.mind = CoreStat(data["mind_points"])
+        this.agility = CoreStat(data["agility_points"])
         this._derive_stats()
 
         this.weapon = stuff.factory(**data["weapon"]) if data.get("weapon") else None
@@ -194,15 +198,65 @@ class User():
             self.give(item, 1)
         return True
 
+    def upgrade(self, stat_name, points=1):
+        """ Spend points to upgrade base stats """
+        if self.points < points:
+            return False
+
+        # Grab the correct stat
+        if stat_name == 'body':
+            stat = self.body
+        elif stat_name == 'mind':
+            stat = self.mind
+        elif stat_name == 'agility':
+            stat = self.agility
+        else:
+            return False
+
+        # Upgrade that stat
+        stat.upgrade(points)
+        self.points -= points
+        return True
+
+    def restart(self):
+        """ Removes all spent stat points and puts them back into the point pool """
+        self.points += self.body.restart()
+        self.points += self.mind.restart()
+        self.points += self.agility.restart()
+
+    def gain_xp(self, experience):
+        """ Gives the user experience points """
+        # Give the user at least 1 experience
+        experience = int(experience)
+        if experience < 1:
+            experience = 1
+        self.experience += experience
+
+    def level_up(self):
+        """ Levels the character up """
+        if self.experience >= 1000:
+            self.level += 1
+            self.points += 5
+            self.experience -= 1000
+            return True
+
+        return False
+
     def is_alive(self):
         """ Checks if this user is dead or alive """
         return self.life.current > 0
 
     def _derive_stats(self):
         """ Generates the derived stats from the core stats """
-        self.life = DerivedStat(self.body, factor=25, offset=100)
-        self.mana = DerivedStat(self.mind, factor=5, offset=5)
-        self.speed = DerivedStat(self.agility, factor=2, offset=0)
+        # set the correct factors and offsets
+        self.body.set_derived(25, 100)
+        self.mind.set_derived(5, 5)
+        self.agility.set_derived(2, 0)
+
+        # Create pointers
+        self.life = self.body.derived
+        self.mana = self.mind.derived
+        self.speed = self.agility.derived
 
 
 class UserEncoder(json.JSONEncoder):
@@ -217,18 +271,19 @@ class UserEncoder(json.JSONEncoder):
                 inventory.append(new_entry)
 
             return {
-                'name'      : obj.name,
-                'level'     : obj.level,
-                'experience': obj.experience,
-                'body'      : obj.body.base,
-                'mind'      : obj.mind.base,
-                'agility'   : obj.agility.base,
-                'weapon'    : obj.weapon.__dict__ if obj.weapon else None,
-                'armor'     : obj.armor.__dict__ if obj.armor else None,
-                'accessory' : obj.accessory.__dict__ if obj.accessory else None,
-                'spells'    : [x.__dict__ for x in obj.spells],
-                'inventory' : inventory,
-                'gold'      : obj.gold
+                'name'           : obj.name,
+                'level'          : obj.level,
+                'experience'     : obj.experience,
+                'points'         : obj.points,
+                'body_points'    : obj.body._points,
+                'mind_points'    : obj.mind._points,
+                'agility_points' : obj.agility._points,
+                'weapon'         : obj.weapon.__dict__ if obj.weapon else None,
+                'armor'          : obj.armor.__dict__ if obj.armor else None,
+                'accessory'      : obj.accessory.__dict__ if obj.accessory else None,
+                'spells'         : [x.__dict__ for x in obj.spells],
+                'inventory'      : inventory,
+                'gold'           : obj.gold
             }
 
         else:

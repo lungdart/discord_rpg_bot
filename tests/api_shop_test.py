@@ -116,6 +116,7 @@ def test_info(env): # pylint: disable=redefined-outer-name,unused-argument
 def test_buy_sell(env): # pylint: disable=redefined-outer-name,unused-argument
     """ Test buying and selling stuff """
     user = env.api.character.get('uSeR')
+    user._gold = 0 # Avoid conflicts in testing when giving initial gold for debugging
     test_gold = env.api.shop.weapons[0].value
     user.earn(test_gold * 2)
 

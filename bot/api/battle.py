@@ -7,14 +7,16 @@ from bot.api.errors import CommandError
 
 class BattleAPI(StateMachine):
     """ State Machine Handler """
-    stopped = State('stopped', initial=True)
-    joinable = State('Joinable')
-    started = State('Started')
+    stopped = State('Battle Stopped', initial=True)
+    joinable = State('Battle Joinable')
+    started = State('Battle Started')
+    finished = State("Battle Finished")
 
     round_started = State('Round started')
     round_wait = State('Waiting on input for round')
     round_running = State('Performing round')
     round_ended = State('Round ended')
+
 
     new = stopped.to(joinable)
     join = joinable.to.itself()
@@ -26,8 +28,9 @@ class BattleAPI(StateMachine):
     run_round = round_wait.to(round_running)
     end_round = round_running.to(round_ended)
     next_round = round_ended.to(round_started)
+    finish = round_ended.to(finished)
 
-    stop = stopped.from_(joinable, started, round_started, round_wait, round_running, round_ended)
+    stop = stopped.from_(joinable, started, round_started, round_wait, round_running, round_ended, finished)
 
     def __init__(self, parent):
         super(BattleAPI, self).__init__()
@@ -239,17 +242,73 @@ class BattleAPI(StateMachine):
         for name in self.participants:
             self.participants[name].defending = False
 
-        # TODO: Winner winner chicken dinner
+        # Win conditions (1 winner, and a tie game)
         if len(self.death_order) == len(self.participants) - 1:
-            self.stop()
-
-        # TODO: Tie game
+            self.finish()
         elif len(self.death_order) == len(self.participants):
-            self.stop()
+            self.finish(draw=True)
 
         # Continue as per normal
         else:
             self.next_round()
+
+    def on_finish(self, draw=False):
+        """ Battle finished """
+        # Winner order is the reverse death order
+        winners = self.death_order[::-1]
+        prizes = {}
+
+        # Generate standard prizes
+        for name in winners:
+            prizes[name] = {'gold': 50, 'experience': 100}
+
+        # Announce winner(s)
+        log = self._parent.logger.entry()
+        if draw:
+            log.title("Draw game!")
+            log.field("First place", f"{winners[0]}, {winners[1]}")
+            prizes[winners[0]]['gold'] += 500
+            prizes[winners[1]]['gold'] += 500
+            second_idx = 2
+            third_idx = 3
+        else:
+            # Announce and give additional prizes to the first place winners
+            log.title("We have a winner!")
+            log.field("First place", f"{winners[0]}")
+            prizes[winners[0]]['gold'] += 500
+            second_idx = 1
+            third_idx = 2
+
+        # Second place
+        if len(winners) > second_idx:
+            second = winners[second_idx]
+            log.field("Second place", f"{second}")
+            prizes[second]['gold'] += 300
+
+        # Third place
+        if len(winners) > third_idx:
+            third = winners[third_idx]
+            log.field("Third place", f"{third}")
+            prizes[third]['gold'] += 200
+
+        # Biggest loser
+        loser = winners[-1]
+        log.field("The biggest loser!", f"{loser}")
+        prizes[loser]['experience'] += 150
+
+        log.buffer(self.ctx.channel)
+
+        # Payout prizes
+        for name in prizes:
+            gold = prizes[name]['gold']
+            experience = prizes[name]['gold']
+            self._parent.character.give_gold(name, gold)
+            self._parent.character.give_xp(name, experience)
+
+    def on_enter_finished(self):
+        """ When you enter the finished state """
+        # Since we do everything when the call is made to change states, we can move directly into stop
+        self.stop()
 
     def _attack(self, source, target):
         """ Source attacks target """

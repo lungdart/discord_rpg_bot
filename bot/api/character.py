@@ -72,7 +72,9 @@ class CharacterAPI():
 
     def load(self, username):
         """ Instantiate the named user instance from disk """
-        user = users.User.load(username)
+        underscored_name = username.replace(' ', '_')
+        filename = os.path.join(os.getenv('DATA_PATH'), f'user_{underscored_name}.json')
+        user = users.User.load(filename)
 
         lowercase = username.lower()
         self.cache[lowercase] = user
@@ -82,7 +84,9 @@ class CharacterAPI():
         """ Save then unload a user from cache """
         # Load and save the user first
         user = self.get(username)
-        user.save()
+        underscored_name = user.name.replace(' ', '_')
+        filename = os.path.join(os.getenv('DATA_PATH'), f'user_{underscored_name}.json')
+        user.save(filename)
 
         # Ensure the user is unloaded
         lowercase = username.lower()
@@ -143,3 +147,69 @@ class CharacterAPI():
             raise CommandError(f"Invalid equipment slot: {slot}")
 
         self.save(username)
+
+    def give_xp(self, ctx, username, xp):
+        """ Give a character experience by username, returns a True if it triggers a level up """
+        try:
+            xp = int(xp)
+        except ValueError:
+            raise CommandError("Experience to spend must be an integer!")
+        if xp < 1:
+            raise CommandError("Characters can't receive less than 1 experience point")
+
+        target = self.get(username)
+        target.gain_xp(xp)
+
+        # Level up as much as possible
+        levels = 0
+        while target.experience >= 1000:
+            levels += 1
+            target.level_up()
+
+        if levels:
+            log = self._parent.logger.entry()
+            log.title(f"You've gained {levels} level(s)!")
+            log.desc(f"Each level gives you 5 additional points you can spend to increase your base stats. You currently have {target.points} points to spend.")
+            log.field(
+                "Commands",
+                """`!upgrade body <points>`
+                   `!upgrade mind <points>`
+                   `!upgrade agility <points>`
+                   `!restart`""")
+            log.buffer(ctx.author)
+
+    def give_gold(self, username, gold):
+        """ Give a character gold by username """
+        try:
+            gold = int(gold)
+        except ValueError:
+            raise CommandError("Gold given to a character must be an integer")
+        if gold < 1:
+            raise CommandError("A character can't receive less than 1 gold")
+
+        target = self.get(username)
+        target.earn(gold)
+
+    def spend_points(self, username, stat_name, points=1):
+        """ Spend stat points for a given username """
+        try:
+            points = int(points)
+        except ValueError:
+            raise CommandError("The points to spend must be an integer!")
+        if points < 1:
+            raise CommandError("You can't spend fewer than 1 point at a time")
+
+        stat_name_lower = stat_name.lower()
+        if stat_name_lower not in ['body', 'mind', 'agility']:
+            raise CommandError(f"Invalid stat name {stat_name} to spend points on")
+
+        target = self.get(username)
+        if points > target.points:
+            raise CommandError(f"You can't spend more points than you have! ({target.points} points)")
+
+        target.upgrade(stat_name_lower, points)
+
+    def restart_points(self, username):
+        """ Nullifies all spent stat points and puts them back into the pool to start over """
+        target = self.get(username)
+        target.restart()

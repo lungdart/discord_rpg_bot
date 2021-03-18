@@ -9,6 +9,6 @@ COPY . .
 RUN mkdir /data
 RUN mkdir /log
 RUN pip install --no-cache-dir -r requirements.txt
-RUN python -m pytest tests/
+RUN python -m pytest --cov=bot --cov-report=term-missing tests/
 
 CMD python -m bot >> /log/discord_rpg_bot.log 2>&1

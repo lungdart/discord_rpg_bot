@@ -20,7 +20,6 @@ def env():
         channel = None
         author = None
 
-
     class Fixture():
         ctx = FakeContext()
         weapon = stuff.Sword(name="test sword", desc="You should never see this", power=25, value=10)
